@@ -2,16 +2,29 @@ import React, { useState } from "react";
 import {
   LayoutDashboard, Package, Plus, Search, Upload, Check, AlertTriangle,
   FolderPlus, Edit3, Trash2, Tag, ArrowUpRight, TrendingUp, DollarSign,
-  Box, ShieldAlert, CheckCircle, Eye, EyeOff, Sliders
+  Box, ShieldAlert, CheckCircle, Eye, EyeOff, Sliders, Cloud, Key,
+  RefreshCw, CheckCircle2, Image as ImageIcon, Loader2, Sparkles, ExternalLink
 } from "lucide-react";
 import { Swatch } from "./BrandDecorations";
+import {
+  uploadGarmentPhoto,
+  deleteProductFromFirestore,
+  seedFirestoreCatalog,
+  getFirebaseInstance
+} from "../utils/firebase";
+import {
+  getActiveFirebaseConfig,
+  saveCustomFirebaseConfig,
+  clearCustomFirebaseConfig,
+  isFirebaseConfigured
+} from "../utils/firebaseConfig";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
 export default function AdminDashboard({
   products, saveProducts, categories, saveCategories, orders
 }) {
-  const [activeTab, setActiveTab] = useState("inventory"); // inventory | add_product | segments | orders
+  const [activeTab, setActiveTab] = useState("inventory"); // inventory | segments
   const [searchQuery, setSearchQuery] = useState("");
   const [filterSegment, setFilterSegment] = useState("all");
   const [filterStockStatus, setFilterStockStatus] = useState("all"); // all | instock | outofstock | lowstock
@@ -35,6 +48,21 @@ export default function AdminDashboard({
     stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
     inStock: true
   });
+
+  // State for Image Upload progress
+  const [isUploadingImage, setIsUploadingImage] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadStatusMsg, setUploadStatusMsg] = useState("");
+
+  // Firebase Setup Modal & Status
+  const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
+  const [isCloudConfigured, setIsCloudConfigured] = useState(() => isFirebaseConfigured());
+  const [firebaseConfigInput, setFirebaseConfigInput] = useState(() => {
+    const cfg = getActiveFirebaseConfig();
+    return JSON.stringify(cfg, null, 2);
+  });
+  const [firebaseMsg, setFirebaseMsg] = useState("");
+  const [isSeeding, setIsSeeding] = useState(false);
 
   // State for creating a new custom Segment/Category
   const [newSegmentName, setNewSegmentName] = useState("");
@@ -80,15 +108,30 @@ export default function AdminDashboard({
     return true;
   });
 
-  // Handle image file upload (converts image file to Base64 data URL)
-  const handleImageUpload = (e) => {
+  // Handle image file upload with Firebase Cloud Storage & local fallback
+  const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setProdForm((prev) => ({ ...prev, image: reader.result }));
-    };
-    reader.readAsDataURL(file);
+
+    setIsUploadingImage(true);
+    setUploadProgress(15);
+    setUploadStatusMsg("Optimizing & uploading garment photo...");
+
+    try {
+      const garmentRef = prodForm.id || prodForm.name || `garment_${Date.now()}`;
+      const result = await uploadGarmentPhoto(file, garmentRef, (progress) => {
+        setUploadProgress(progress);
+      });
+
+      setProdForm((prev) => ({ ...prev, image: result.url }));
+      setUploadStatusMsg(result.isCloud ? "✨ Uploaded to Cloud Storage!" : "💾 Stored locally.");
+      setTimeout(() => setUploadStatusMsg(""), 3500);
+    } catch (err) {
+      console.error("Photo upload error:", err);
+      setUploadStatusMsg("Upload error: " + err.message);
+    } finally {
+      setIsUploadingImage(false);
+    }
   };
 
   // Toggle inStock status for a product
@@ -155,6 +198,7 @@ export default function AdminDashboard({
   const handleDeleteProduct = (id) => {
     if (window.confirm("Are you sure you want to delete this product from the workroom catalog?")) {
       saveProducts(products.filter((p) => p.id !== id));
+      deleteProductFromFirestore(id).catch(() => {});
     }
   };
 
@@ -176,8 +220,75 @@ export default function AdminDashboard({
     setTimeout(() => setSegmentMsg(""), 2500);
   };
 
+  // Remove a Segment / Category
+  const handleDeleteSegment = (categoryName) => {
+    if (categories.length <= 1) {
+      alert("Cannot remove the only remaining segment. At least one segment is required.");
+      return;
+    }
+    const count = products.filter((p) => p.category === categoryName).length;
+    const confirmMsg = count > 0
+      ? `Are you sure you want to remove the "${categoryName}" segment? Note: ${count} garment(s) currently belong to this segment.`
+      : `Remove segment "${categoryName}"?`;
+
+    if (window.confirm(confirmMsg)) {
+      saveCategories(categories.filter((c) => c.name !== categoryName));
+      setSegmentMsg(`✓ Segment "${categoryName}" removed!`);
+      setTimeout(() => setSegmentMsg(""), 2500);
+    }
+  };
+
+  // Save Firebase configuration
+  const handleSaveFirebaseConfig = (e) => {
+    e.preventDefault();
+    try {
+      const parsed = JSON.parse(firebaseConfigInput);
+      saveCustomFirebaseConfig(parsed);
+      const isConfigured = isFirebaseConfigured(parsed);
+      setIsCloudConfigured(isConfigured);
+      setFirebaseMsg(isConfigured ? "🎉 Firebase credentials saved! Connecting to cloud..." : "⚠️ Incomplete Firebase credentials.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (err) {
+      setFirebaseMsg("❌ Invalid JSON format. Please paste the Firebase config object JSON.");
+    }
+  };
+
+  // Reset Firebase config
+  const handleClearFirebaseConfig = () => {
+    if (window.confirm("Disconnect Firebase and switch to local offline demo mode?")) {
+      clearCustomFirebaseConfig();
+      setIsCloudConfigured(false);
+      setFirebaseMsg("Switched to local demo mode.");
+      setTimeout(() => {
+        window.location.reload();
+      }, 1000);
+    }
+  };
+
+  // Force seed catalog to Firestore
+  const handleForceSeedCatalog = async () => {
+    const { db, isLive } = getFirebaseInstance();
+    if (!isLive || !db) {
+      alert("Please connect Firebase first.");
+      return;
+    }
+    setIsSeeding(true);
+    try {
+      await seedFirestoreCatalog(db);
+      setFirebaseMsg("✅ Store catalog pushed to Firebase Cloud Firestore successfully!");
+    } catch (err) {
+      setFirebaseMsg("Failed to seed catalog: " + err.message);
+    } finally {
+      setIsSeeding(false);
+    }
+  };
+
   const openAddModal = () => {
     setEditingProduct(null);
+    setUploadProgress(0);
+    setUploadStatusMsg("");
     setProdForm({
       id: "",
       name: "",
@@ -197,6 +308,8 @@ export default function AdminDashboard({
 
   const openEditModal = (p) => {
     setEditingProduct(p);
+    setUploadProgress(0);
+    setUploadStatusMsg("");
     const stockObj = typeof p.stock === 'object' ? p.stock : { S: 10, M: 10, L: 10, XL: 5, XXL: 2 };
     setProdForm({ ...p, stock: stockObj });
     setIsModalOpen(true);
@@ -213,11 +326,33 @@ export default function AdminDashboard({
               SELLER WORKROOM PORTAL
             </span>
             <span className="text-xs text-gray-500 font-mono">Yashal Admin v2.4</span>
+            
+            {/* Live Cloud Status Pill */}
+            <button
+              onClick={() => setIsFirebaseModalOpen(true)}
+              className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full flex items-center gap-1 border transition-colors ${
+                isCloudConfigured
+                  ? "bg-emerald-50 text-emerald-800 border-emerald-300 hover:bg-emerald-100"
+                  : "bg-amber-50 text-amber-800 border-amber-300 hover:bg-amber-100"
+              }`}
+              title="Click to manage Firebase Cloud sync"
+            >
+              <span className={`w-1.5 h-1.5 rounded-full ${isCloudConfigured ? "bg-emerald-500 animate-pulse" : "bg-amber-500"}`} />
+              {isCloudConfigured ? "Cloud Live Sync Active" : "Local Demo Mode (Connect Cloud)"}
+            </button>
           </div>
           <h1 className="font-display text-2xl md:text-3xl font-semibold mt-1">Merchant Inventory &amp; Segments</h1>
         </div>
 
         <div className="flex flex-wrap gap-2">
+          <button
+            onClick={() => setIsFirebaseModalOpen(true)}
+            className="yd-btn border border-gray-300 px-3.5 py-2.5 text-xs flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100"
+            title="Configure Firebase Cloud Credentials"
+          >
+            <Cloud size={15} className={isCloudConfigured ? "text-emerald-600" : "text-amber-500"} />
+            <span className="hidden md:inline">Firebase Cloud</span> Setup
+          </button>
           <button
             onClick={() => { setActiveTab("segments"); }}
             className="yd-btn border border-[var(--ink)] px-4 py-2.5 text-xs flex items-center gap-1.5 bg-gray-50 hover:bg-gray-100"
@@ -493,7 +628,14 @@ export default function AdminDashboard({
                         <p className="text-[10px] font-mono text-gray-500">{count} products in segment</p>
                       </div>
                     </div>
-                    <span className="font-mono text-xs bg-white px-2 py-1 rounded border">Active</span>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteSegment(c.name)}
+                      className="px-2 py-1 rounded bg-red-50 text-red-700 hover:bg-red-100 border border-red-200 text-[10px] font-mono font-bold transition-all"
+                      title={`Remove ${c.name} segment`}
+                    >
+                      ✕ Remove
+                    </button>
                   </div>
                 );
               })}
@@ -542,9 +684,14 @@ export default function AdminDashboard({
         <div className="fixed inset-0 z-[90] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
           <div className="bg-white rounded-xl max-w-2xl w-full p-6 shadow-2xl relative border border-gray-300 my-8">
             <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <h2 className="font-display text-xl font-bold">
-                {editingProduct ? `Edit Garment — ${editingProduct.id}` : "Add New Garment to Catalog"}
-              </h2>
+              <div>
+                <h2 className="font-display text-xl font-bold">
+                  {editingProduct ? `Edit Garment — ${editingProduct.id}` : "Add New Garment to Catalog"}
+                </h2>
+                <p className="text-xs text-gray-500 font-mono">
+                  {isCloudConfigured ? "🟢 Live Sync: Updates instantly for all customers" : "🟠 Demo Mode: Stored locally"}
+                </p>
+              </div>
               <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-black font-bold">
                 ✕
               </button>
@@ -599,44 +746,99 @@ export default function AdminDashboard({
                 </div>
               </div>
 
-              {/* Garment Image Upload & Color Swatch Pickers */}
+              {/* Garment Image Upload & Visual Customizer */}
               <div className="border p-4 rounded bg-gray-50 space-y-3">
-                <p className="text-xs font-semibold text-gray-800">Garment Image &amp; Visual Swatch</p>
-                <div className="grid sm:grid-cols-2 gap-4 items-center">
+                <div className="flex items-center justify-between">
+                  <p className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
+                    <ImageIcon size={14} className="yd-mustard" /> Garment Photo &amp; Visual Swatch
+                  </p>
+                  {isCloudConfigured && (
+                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                      ☁️ Firebase Storage Enabled
+                    </span>
+                  )}
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-4 items-start">
                   <div>
-                    <label className="text-[11px] text-gray-600 block mb-1">Upload Photo (From Disk):</label>
+                    <label className="text-[11px] text-gray-600 font-medium block mb-1">
+                      Upload Photo from Device (Phone/Computer):
+                    </label>
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      className="text-xs w-full"
+                      disabled={isUploadingImage}
+                      className="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[var(--ink)] file:text-[var(--ivory)] hover:file:opacity-90 cursor-pointer"
                     />
-                    <p className="text-[10px] text-gray-400 mt-1">Converts image to local DataURL for preview.</p>
+
+                    {/* Image URL Manual Input fallback */}
+                    <div className="mt-2">
+                      <span className="text-[10px] text-gray-400 block mb-0.5">Or paste direct Image Web URL:</span>
+                      <input
+                        type="url"
+                        placeholder="https://..."
+                        value={typeof prodForm.image === 'string' && prodForm.image.startsWith('http') ? prodForm.image : ''}
+                        onChange={(e) => setProdForm({ ...prodForm, image: e.target.value })}
+                        className="w-full border rounded px-2 py-1 text-[11px] outline-none bg-white"
+                      />
+                    </div>
+
+                    {/* Upload progress & status */}
+                    {isUploadingImage && (
+                      <div className="mt-2 space-y-1">
+                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className="bg-[var(--mustard-deep)] h-1.5 rounded-full transition-all duration-300"
+                            style={{ width: `${uploadProgress}%` }}
+                          />
+                        </div>
+                        <p className="text-[10px] font-mono text-gray-500 flex items-center gap-1">
+                          <Loader2 size={10} className="animate-spin" /> Uploading to cloud ({uploadProgress}%)...
+                        </p>
+                      </div>
+                    )}
+
+                    {uploadStatusMsg && (
+                      <p className="text-[11px] font-mono text-emerald-700 mt-1.5 font-medium">
+                        {uploadStatusMsg}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="text-[11px] text-gray-600 block mb-1">Dual Fabric Colors (Fallback Gradient):</label>
-                    <div className="flex gap-2">
+                    <label className="text-[11px] text-gray-600 block mb-1">Dual Fabric Colors (Gradient Fallback):</label>
+                    <div className="flex gap-2 items-center">
                       <input
                         type="color"
                         value={prodForm.c1}
                         onChange={(e) => setProdForm({ ...prodForm, c1: e.target.value })}
                         className="h-8 w-12 cursor-pointer border rounded"
+                        title="Primary Fabric Hue"
                       />
                       <input
                         type="color"
                         value={prodForm.c2}
                         onChange={(e) => setProdForm({ ...prodForm, c2: e.target.value })}
                         className="h-8 w-12 cursor-pointer border rounded"
+                        title="Secondary Fabric Hue"
                       />
+                      <span className="text-[10px] font-mono text-gray-400">Used if photo isn't available</span>
+                    </div>
+
+                    {/* Live Preview */}
+                    <div className="mt-3 flex items-center gap-3">
+                      <span className="text-xs text-gray-500 font-mono">Storefront Preview:</span>
+                      <div className="relative">
+                        <Swatch p={prodForm} className="w-14 h-14 rounded-lg border shadow-sm object-cover" />
+                        {prodForm.image && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5">
+                            <Check size={10} />
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
-
-                {/* Preview */}
-                <div className="flex items-center gap-3 pt-2">
-                  <span className="text-xs text-gray-500 font-mono">Preview:</span>
-                  <Swatch p={prodForm} className="w-16 h-16 rounded border" />
                 </div>
               </div>
 
@@ -681,7 +883,7 @@ export default function AdminDashboard({
                   className="yd-checkbox"
                 />
                 <label htmlFor="inStockCheck" className="text-xs font-medium cursor-pointer">
-                  Mark item as active &amp; In-Stock
+                  Mark item as active &amp; In-Stock for customers
                 </label>
               </div>
 
@@ -695,17 +897,103 @@ export default function AdminDashboard({
                 </button>
                 <button
                   type="submit"
-                  className="yd-btn yd-btn-primary px-6 py-2.5 text-xs font-bold"
+                  disabled={isUploadingImage}
+                  className="yd-btn yd-btn-primary px-6 py-2.5 text-xs font-bold flex items-center gap-1.5 shadow"
                   style={{ background: "var(--mustard)", color: "var(--ink)" }}
                 >
-                  {editingProduct ? "Save Garment Changes" : "Create Garment"}
+                  <Sparkles size={14} />
+                  {editingProduct ? "Save & Sync Garment" : "Create & Publish Garment"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
+
+      {/* FIREBASE CLOUD SETUP MODAL */}
+      {isFirebaseModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl relative border border-gray-300 my-8">
+            <div className="flex items-center justify-between border-b pb-3 mb-4">
+              <div className="flex items-center gap-2">
+                <Cloud className="yd-mustard" size={22} />
+                <h2 className="font-display text-xl font-bold">Firebase Cloud Connection</h2>
+              </div>
+              <button onClick={() => setIsFirebaseModalOpen(false)} className="text-gray-500 hover:text-black font-bold">
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="p-3 rounded-lg border bg-amber-50/70 border-amber-200">
+                <p className="font-semibold text-amber-900 mb-1 flex items-center gap-1.5">
+                  <Sparkles size={14} /> How to get free Firebase Keys (Takes 2 minutes):
+                </p>
+                <ol className="list-decimal list-inside space-y-1 text-[11px] text-amber-800">
+                  <li>Go to <a href="https://console.firebase.google.com" target="_blank" rel="noreferrer" className="underline font-semibold">console.firebase.google.com</a> and create a project.</li>
+                  <li>Click <strong>Firestore Database</strong> &rarr; Create Database (Start in test mode).</li>
+                  <li>Click <strong>Storage</strong> &rarr; Get Started (Start in test mode for garment photos).</li>
+                  <li>Go to <strong>Project Settings</strong> &rarr; Scroll down &rarr; Copy <code>firebaseConfig</code> object.</li>
+                </ol>
+              </div>
+
+              <form onSubmit={handleSaveFirebaseConfig} className="space-y-3">
+                <div>
+                  <label className="text-xs font-semibold block mb-1">
+                    Paste Firebase Config JSON Object:
+                  </label>
+                  <textarea
+                    rows={8}
+                    value={firebaseConfigInput}
+                    onChange={(e) => setFirebaseConfigInput(e.target.value)}
+                    placeholder='{\n  "apiKey": "AIzaSy...",\n  "projectId": "yashal-dresses",\n  "storageBucket": "yashal-dresses.appspot.com"\n}'
+                    className="w-full font-mono text-[11px] border rounded p-3 bg-gray-900 text-amber-300 outline-none"
+                    required
+                  />
+                </div>
+
+                {firebaseMsg && (
+                  <p className="font-mono text-[11px] p-2 rounded bg-gray-100 border text-gray-800">
+                    {firebaseMsg}
+                  </p>
+                )}
+
+                <div className="flex flex-wrap gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="yd-btn yd-btn-primary py-2.5 px-4 text-xs font-bold flex-1"
+                    style={{ background: "var(--ink)", color: "var(--ivory)" }}
+                  >
+                    Save &amp; Connect Live Sync
+                  </button>
+
+                  {isCloudConfigured && (
+                    <button
+                      type="button"
+                      onClick={handleForceSeedCatalog}
+                      disabled={isSeeding}
+                      className="yd-btn border border-gray-300 py-2.5 px-3 text-xs bg-gray-50 hover:bg-gray-100 flex items-center gap-1"
+                    >
+                      <RefreshCw size={13} className={isSeeding ? "animate-spin" : ""} />
+                      Seed Initial Catalog to Cloud
+                    </button>
+                  )}
+
+                  {isCloudConfigured && (
+                    <button
+                      type="button"
+                      onClick={handleClearFirebaseConfig}
+                      className="yd-btn border border-red-300 text-red-700 py-2.5 px-3 text-xs hover:bg-red-50"
+                    >
+                      Disconnect
+                    </button>
+                  )}
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-

@@ -30,6 +30,12 @@ import {
   loadUser, saveUser as storageSaveUser,
   deductStockForOrder
 } from "./utils/storage";
+import {
+  subscribeToLiveProducts,
+  subscribeToLiveCategories,
+  subscribeToLiveBrands,
+  subscribeToLiveOrders
+} from "./utils/firebase";
 import { sendOrderConfirmationEmail } from "./utils/emailSync.js";
 
 /* --------------------------------- HOME PAGE --------------------------------- */
@@ -169,6 +175,44 @@ export default function App() {
     setInquiryProduct(prod);
     setShowInquiryModal(true);
   };
+
+  // Real-time Cloud Synchronization (Firebase Firestore)
+  useEffect(() => {
+    const unsubProducts = subscribeToLiveProducts((liveProds) => {
+      if (liveProds && liveProds.length) {
+        setProductsState(liveProds);
+        storageSaveProducts(liveProds, false);
+      }
+    });
+
+    const unsubCategories = subscribeToLiveCategories((liveCats) => {
+      if (liveCats && liveCats.length) {
+        setCategoriesState(liveCats);
+        storageSaveCategories(liveCats, false);
+      }
+    });
+
+    const unsubBrands = subscribeToLiveBrands((liveBrands) => {
+      if (liveBrands && liveBrands.length) {
+        setBrandsState(liveBrands);
+        storageSaveBrands(liveBrands);
+      }
+    });
+
+    const unsubOrders = subscribeToLiveOrders((liveOrders) => {
+      if (liveOrders && liveOrders.length) {
+        setOrdersState(liveOrders);
+        storageSaveOrders(liveOrders, false);
+      }
+    });
+
+    return () => {
+      if (typeof unsubProducts === 'function') unsubProducts();
+      if (typeof unsubCategories === 'function') unsubCategories();
+      if (typeof unsubBrands === 'function') unsubBrands();
+      if (typeof unsubOrders === 'function') unsubOrders();
+    };
+  }, []);
 
   // Persistence Wrappers
   const updateProducts = (newProds) => {

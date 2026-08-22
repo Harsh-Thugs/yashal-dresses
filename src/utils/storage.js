@@ -1,4 +1,10 @@
 import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_BRANDS } from '../data/initialData.js';
+import {
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  syncCategoriesToFirestore,
+  saveOrderToFirestore
+} from './firebase.js';
 
 const STORAGE_KEYS = {
   PRODUCTS: 'yd_products_v3',
@@ -34,16 +40,34 @@ export function loadProducts() {
   return safeParse(STORAGE_KEYS.PRODUCTS, INITIAL_PRODUCTS);
 }
 
-export function saveProducts(products) {
+export function saveProducts(products, syncToCloud = true) {
   safeSave(STORAGE_KEYS.PRODUCTS, products);
+
+  if (syncToCloud && Array.isArray(products)) {
+    // Background cloud sync for any modified products
+    products.forEach((p) => {
+      saveProductToFirestore(p).catch(() => {});
+    });
+  }
+}
+
+export function removeProduct(productId) {
+  const current = loadProducts();
+  const updated = current.filter((p) => p.id !== productId);
+  safeSave(STORAGE_KEYS.PRODUCTS, updated);
+  deleteProductFromFirestore(productId).catch(() => {});
+  return updated;
 }
 
 export function loadCategories() {
   return safeParse(STORAGE_KEYS.CATEGORIES, INITIAL_CATEGORIES);
 }
 
-export function saveCategories(categories) {
+export function saveCategories(categories, syncToCloud = true) {
   safeSave(STORAGE_KEYS.CATEGORIES, categories);
+  if (syncToCloud && Array.isArray(categories)) {
+    syncCategoriesToFirestore(categories).catch(() => {});
+  }
 }
 
 export function loadBrands() {
@@ -70,8 +94,12 @@ export function loadOrders() {
   return safeParse(STORAGE_KEYS.ORDERS, defaultOrders);
 }
 
-export function saveOrders(orders) {
+export function saveOrders(orders, syncToCloud = true) {
   safeSave(STORAGE_KEYS.ORDERS, orders);
+  if (syncToCloud && Array.isArray(orders) && orders.length > 0) {
+    const latest = orders[0];
+    saveOrderToFirestore(latest).catch(() => {});
+  }
 }
 
 export function loadCart() {
@@ -100,6 +128,7 @@ export function saveUser(user) {
 
 /**
  * Deducts stock from products when an order is completed.
+ * Syncs updated stock to both localStorage and Firebase Cloud Firestore.
  */
 export function deductStockForOrder(orderItems, currentProducts) {
   const updatedProducts = currentProducts.map((prod) => {
@@ -116,14 +145,18 @@ export function deductStockForOrder(orderItems, currentProducts) {
     const totalRemaining = Object.values(newStock).reduce((sum, q) => sum + q, 0);
     const inStock = totalRemaining > 0 && prod.inStock;
 
-    return {
+    const updatedProd = {
       ...prod,
       stock: newStock,
       inStock,
     };
+
+    // Sync individual product stock update to Firestore
+    saveProductToFirestore(updatedProd).catch(() => {});
+
+    return updatedProd;
   });
 
-  saveProducts(updatedProducts);
+  saveProducts(updatedProducts, false);
   return updatedProducts;
 }
-
