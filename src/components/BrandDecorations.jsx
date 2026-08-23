@@ -421,12 +421,14 @@ export function AnimatedSwingTag({ size = 64 }) {
 export function Swatch({ p, className = "" }) {
   if (!p) return <div className={`bg-gray-200 ${className}`} />;
   
+  const displayImg = (Array.isArray(p.images) && p.images.length > 0) ? p.images[0] : p.image;
+
   // If product has a custom uploaded image URL, display the uploaded photo!
-  if (p.image) {
+  if (displayImg) {
     return (
       <div className={`relative flex items-center justify-center overflow-hidden bg-cover bg-center ${className}`}>
         <img
-          src={p.image}
+          src={displayImg}
           alt={p.name}
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
         />

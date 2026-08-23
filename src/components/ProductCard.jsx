@@ -31,8 +31,13 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
       <div className="tag-hole" />
 
       {/* Product Image / Swatch */}
-      <button className="text-left relative w-full overflow-hidden" onClick={() => onOpen(p)}>
+      <button className="text-left relative w-full overflow-hidden group" onClick={() => onOpen(p)}>
         <Swatch p={{ ...p, inStock: !isOutOfStock }} className="h-44 sm:h-48 w-full" />
+        {Array.isArray(p.images) && p.images.length > 1 && (
+          <span className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow z-10 flex items-center gap-1">
+            📷 {p.images.length}
+          </span>
+        )}
       </button>
 
       {/* Wishlist Button */}

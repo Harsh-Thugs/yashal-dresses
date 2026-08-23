@@ -38,6 +38,7 @@ export default function AdminDashboard({
     id: "",
     name: "",
     category: "Shirts",
+    brand: "Zodiac",
     price: 1499,
     mrp: 1999,
     tag: "New",
@@ -45,6 +46,7 @@ export default function AdminDashboard({
     c1: "#1B2A4A",
     c2: "#0D1830",
     image: null,
+    images: [],
     stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
     inStock: true
   });
@@ -53,6 +55,7 @@ export default function AdminDashboard({
   const [isUploadingImage, setIsUploadingImage] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatusMsg, setUploadStatusMsg] = useState("");
+  const [directImageUrl, setDirectImageUrl] = useState("");
 
   // Firebase Setup Modal & Status
   const [isFirebaseModalOpen, setIsFirebaseModalOpen] = useState(false);
@@ -108,30 +111,164 @@ export default function AdminDashboard({
     return true;
   });
 
-  // Handle image file upload with Firebase Cloud Storage & local fallback
-  const handleImageUpload = async (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+  // Handle multiple image files upload
+  const handleMultipleImageUpload = async (e) => {
+    const files = Array.from(e.target.files || []);
+    if (!files.length) return;
 
     setIsUploadingImage(true);
     setUploadProgress(15);
-    setUploadStatusMsg("Optimizing & uploading garment photo...");
+    setUploadStatusMsg("Optimizing & uploading garment photos...");
 
     try {
       const garmentRef = prodForm.id || prodForm.name || `garment_${Date.now()}`;
-      const result = await uploadGarmentPhoto(file, garmentRef, (progress) => {
-        setUploadProgress(progress);
-      });
+      const uploadedUrls = [];
 
-      setProdForm((prev) => ({ ...prev, image: result.url }));
-      setUploadStatusMsg(result.isCloud ? "✨ Uploaded to Cloud Storage!" : "💾 Stored locally.");
-      setTimeout(() => setUploadStatusMsg(""), 3500);
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const res = await uploadGarmentPhoto(file, `${garmentRef}_${i}`, (p) => {
+          const overall = Math.round(((i + p / 100) / files.length) * 100);
+          setUploadProgress(overall);
+        });
+        if (res?.url) uploadedUrls.push(res.url);
+      }
+
+      if (uploadedUrls.length > 0) {
+        setProdForm((prev) => {
+          const existing = Array.isArray(prev.images) && prev.images.length > 0
+            ? prev.images
+            : (prev.image ? [prev.image] : []);
+          const merged = [...existing, ...uploadedUrls];
+          return {
+            ...prev,
+            images: merged,
+            image: merged[0] || null
+          };
+        });
+        setUploadStatusMsg(`✓ ${uploadedUrls.length} photo(s) attached!`);
+        setTimeout(() => setUploadStatusMsg(""), 3500);
+      }
     } catch (err) {
       console.error("Photo upload error:", err);
       setUploadStatusMsg("Upload error: " + err.message);
     } finally {
       setIsUploadingImage(false);
+      e.target.value = "";
     }
+  };
+
+  const handleAddDirectUrl = () => {
+    const url = directImageUrl.trim();
+    if (!url) return;
+    setProdForm((prev) => {
+      const existing = Array.isArray(prev.images) && prev.images.length > 0
+        ? prev.images
+        : (prev.image ? [prev.image] : []);
+      const merged = [...existing, url];
+      return {
+        ...prev,
+        images: merged,
+        image: merged[0] || null
+      };
+    });
+    setDirectImageUrl("");
+  };
+
+  const handleRemovePhoto = (indexToRemove) => {
+    setProdForm((prev) => {
+      const existing = Array.isArray(prev.images) ? prev.images : (prev.image ? [prev.image] : []);
+      const updated = existing.filter((_, idx) => idx !== indexToRemove);
+      return {
+        ...prev,
+        images: updated,
+        image: updated[0] || null
+      };
+    });
+  };
+
+  const handleMakeCoverPhoto = (indexToCover) => {
+    setProdForm((prev) => {
+      const existing = Array.isArray(prev.images) ? [...prev.images] : (prev.image ? [prev.image] : []);
+      if (indexToCover < 0 || indexToCover >= existing.length) return prev;
+      const [selected] = existing.splice(indexToCover, 1);
+      existing.unshift(selected);
+      return {
+        ...prev,
+        images: existing,
+        image: existing[0] || null
+      };
+    });
+  };
+
+  const handleMovePhoto = (fromIdx, direction) => {
+    setProdForm((prev) => {
+      const existing = Array.isArray(prev.images) ? [...prev.images] : (prev.image ? [prev.image] : []);
+      const toIdx = fromIdx + direction;
+      if (toIdx < 0 || toIdx >= existing.length) return prev;
+      const temp = existing[fromIdx];
+      existing[fromIdx] = existing[toIdx];
+      existing[toIdx] = temp;
+      return {
+        ...prev,
+        images: existing,
+        image: existing[0] || null
+      };
+    });
+  };
+
+  const handleClearAllPhotos = () => {
+    if (window.confirm("Remove all attached photos from this garment?")) {
+      setProdForm((prev) => ({ ...prev, images: [], image: null }));
+    }
+  };
+
+  // Open Edit Modal
+  const openEditModal = (p) => {
+    setEditingProduct(p);
+    const existingImgs = Array.isArray(p.images) && p.images.length > 0
+      ? [...p.images]
+      : (p.image ? [p.image] : []);
+    setProdForm({
+      id: p.id || "",
+      name: p.name || "",
+      category: p.category || categories[0]?.name || "Shirts",
+      brand: p.brand || "Zodiac",
+      price: p.price || 1499,
+      mrp: p.mrp || 1999,
+      tag: p.tag || "New",
+      desc: p.desc || "",
+      c1: p.c1 || "#1B2A4A",
+      c2: p.c2 || "#0D1830",
+      images: existingImgs,
+      image: existingImgs[0] || p.image || null,
+      stock: typeof p.stock === 'object' ? { ...p.stock } : { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
+      inStock: p.inStock
+    });
+    setDirectImageUrl("");
+    setIsModalOpen(true);
+  };
+
+  // Open Add New Product Modal
+  const openAddModal = () => {
+    setEditingProduct(null);
+    setProdForm({
+      id: "",
+      name: "",
+      category: categories[0]?.name || "Shirts",
+      brand: "Zodiac",
+      price: 1499,
+      mrp: 1999,
+      tag: "New",
+      desc: "",
+      c1: "#1B2A4A",
+      c2: "#0D1830",
+      images: [],
+      image: null,
+      stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
+      inStock: true
+    });
+    setDirectImageUrl("");
+    setIsModalOpen(true);
   };
 
   // Toggle inStock status for a product
@@ -172,22 +309,38 @@ export default function AdminDashboard({
     const totalFormStock = Object.values(prodForm.stock).reduce((a, b) => a + Number(b), 0);
     const finalInStock = totalFormStock > 0 && prodForm.inStock;
 
+    const cleanImages = Array.isArray(prodForm.images) ? prodForm.images.filter(Boolean) : (prodForm.image ? [prodForm.image] : []);
+    const primaryImage = cleanImages[0] || prodForm.image || null;
+
+    const payload = {
+      ...prodForm,
+      images: cleanImages,
+      image: primaryImage,
+      inStock: finalInStock
+    };
+
+    let savedProd;
     if (editingProduct) {
       // Update existing
-      const updated = products.map((p) => (p.id === editingProduct.id ? { ...prodForm, inStock: finalInStock } : p));
+      savedProd = { ...editingProduct, ...payload };
+      const updated = products.map((p) => (p.id === editingProduct.id ? savedProd : p));
       saveProducts(updated);
     } else {
       // Add new product
       const newId = `YD-${100 + products.length + Math.floor(Math.random() * 90)}`;
-      const newProd = {
-        ...prodForm,
+      savedProd = {
+        ...payload,
         id: newId,
         inStock: finalInStock,
         rating: "4.8",
         reviews: 1,
         sizes: Object.keys(prodForm.stock)
       };
-      saveProducts([newProd, ...products]);
+      saveProducts([savedProd, ...products]);
+    }
+
+    if (savedProd) {
+      saveProductToFirestore(savedProd).catch(() => {});
     }
 
     setIsModalOpen(false);
@@ -283,36 +436,6 @@ export default function AdminDashboard({
     } finally {
       setIsSeeding(false);
     }
-  };
-
-  const openAddModal = () => {
-    setEditingProduct(null);
-    setUploadProgress(0);
-    setUploadStatusMsg("");
-    setProdForm({
-      id: "",
-      name: "",
-      category: categories[0]?.name || "Shirts",
-      price: 1499,
-      mrp: 1999,
-      tag: "New",
-      desc: "Finished with signature stitch detailing, crafted for durability.",
-      c1: "#1B2A4A",
-      c2: "#0D1830",
-      image: null,
-      stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
-      inStock: true
-    });
-    setIsModalOpen(true);
-  };
-
-  const openEditModal = (p) => {
-    setEditingProduct(p);
-    setUploadProgress(0);
-    setUploadStatusMsg("");
-    const stockObj = typeof p.stock === 'object' ? p.stock : { S: 10, M: 10, L: 10, XL: 5, XXL: 2 };
-    setProdForm({ ...p, stock: stockObj });
-    setIsModalOpen(true);
   };
 
   return (
@@ -750,94 +873,193 @@ export default function AdminDashboard({
               <div className="border p-4 rounded bg-gray-50 space-y-3">
                 <div className="flex items-center justify-between">
                   <p className="text-xs font-semibold text-gray-800 flex items-center gap-1.5">
-                    <ImageIcon size={14} className="yd-mustard" /> Garment Photo &amp; Visual Swatch
+                    <ImageIcon size={14} className="yd-mustard" /> Garment Photos ({prodForm.images?.length || 0} Attached)
                   </p>
-                  {isCloudConfigured && (
-                    <span className="text-[10px] font-mono text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
-                      ☁️ Firebase Storage Enabled
-                    </span>
+                  {prodForm.images && prodForm.images.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleClearAllPhotos}
+                      className="text-[10px] font-mono text-red-600 hover:text-red-800 underline"
+                    >
+                      Clear All Photos
+                    </button>
                   )}
                 </div>
 
-                <div className="grid sm:grid-cols-2 gap-4 items-start">
-                  <div>
-                    <label className="text-[11px] text-gray-600 font-medium block mb-1">
-                      Upload Photo from Device (Phone/Computer):
-                    </label>
+                <div className="space-y-2">
+                  <label className="block cursor-pointer">
+                    <div className="border-2 border-dashed border-gray-300 hover:border-gray-900 bg-white rounded-lg p-3 text-center transition-colors">
+                      <span className="font-mono text-xs font-bold text-gray-800 flex items-center justify-center gap-1.5">
+                        <span>📸</span>
+                        <span>{isUploadingImage ? "Processing photos..." : "+ Choose / Drop Multiple Photos"}</span>
+                      </span>
+                      <span className="text-[10px] text-gray-400 block mt-0.5">Select one or multiple photos from phone / computer</span>
+                    </div>
                     <input
                       type="file"
+                      multiple
                       accept="image/*"
-                      onChange={handleImageUpload}
+                      onChange={handleMultipleImageUpload}
                       disabled={isUploadingImage}
-                      className="text-xs w-full file:mr-2 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-[var(--ink)] file:text-[var(--ivory)] hover:file:opacity-90 cursor-pointer"
+                      className="hidden"
                     />
+                  </label>
 
-                    {/* Image URL Manual Input fallback */}
-                    <div className="mt-2">
-                      <span className="text-[10px] text-gray-400 block mb-0.5">Or paste direct Image Web URL:</span>
-                      <input
-                        type="url"
-                        placeholder="https://..."
-                        value={typeof prodForm.image === 'string' && prodForm.image.startsWith('http') ? prodForm.image : ''}
-                        onChange={(e) => setProdForm({ ...prodForm, image: e.target.value })}
-                        className="w-full border rounded px-2 py-1 text-[11px] outline-none bg-white"
-                      />
-                    </div>
-
-                    {/* Upload progress & status */}
-                    {isUploadingImage && (
-                      <div className="mt-2 space-y-1">
-                        <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
-                          <div
-                            className="bg-[var(--mustard-deep)] h-1.5 rounded-full transition-all duration-300"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                        <p className="text-[10px] font-mono text-gray-500 flex items-center gap-1">
-                          <Loader2 size={10} className="animate-spin" /> Uploading to cloud ({uploadProgress}%)...
-                        </p>
-                      </div>
-                    )}
-
-                    {uploadStatusMsg && (
-                      <p className="text-[11px] font-mono text-emerald-700 mt-1.5 font-medium">
-                        {uploadStatusMsg}
-                      </p>
-                    )}
+                  {/* Direct URL input */}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="url"
+                      placeholder="Or paste direct image Web URL (https://...)"
+                      value={directImageUrl}
+                      onChange={(e) => setDirectImageUrl(e.target.value)}
+                      className="flex-1 border bg-white rounded px-2.5 py-1.5 text-[11px] font-mono outline-none focus:border-black"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleAddDirectUrl}
+                      disabled={!directImageUrl.trim()}
+                      className="yd-btn px-3 py-1.5 text-[11px] font-bold bg-gray-800 text-white hover:bg-black disabled:opacity-40"
+                    >
+                      + Add URL
+                    </button>
                   </div>
+                </div>
 
-                  <div>
-                    <label className="text-[11px] text-gray-600 block mb-1">Dual Fabric Colors (Gradient Fallback):</label>
-                    <div className="flex gap-2 items-center">
-                      <input
-                        type="color"
-                        value={prodForm.c1}
-                        onChange={(e) => setProdForm({ ...prodForm, c1: e.target.value })}
-                        className="h-8 w-12 cursor-pointer border rounded"
-                        title="Primary Fabric Hue"
+                {/* Upload progress & status */}
+                {isUploadingImage && (
+                  <div className="mt-2 space-y-1">
+                    <div className="w-full bg-gray-200 rounded-full h-1.5 overflow-hidden">
+                      <div
+                        className="bg-[var(--mustard-deep)] h-1.5 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress}%` }}
                       />
-                      <input
-                        type="color"
-                        value={prodForm.c2}
-                        onChange={(e) => setProdForm({ ...prodForm, c2: e.target.value })}
-                        className="h-8 w-12 cursor-pointer border rounded"
-                        title="Secondary Fabric Hue"
-                      />
-                      <span className="text-[10px] font-mono text-gray-400">Used if photo isn't available</span>
                     </div>
+                    <p className="text-[10px] font-mono text-gray-500 flex items-center gap-1">
+                      <Loader2 size={10} className="animate-spin" /> Uploading ({uploadProgress}%)...
+                    </p>
+                  </div>
+                )}
 
-                    {/* Live Preview */}
-                    <div className="mt-3 flex items-center gap-3">
-                      <span className="text-xs text-gray-500 font-mono">Storefront Preview:</span>
-                      <div className="relative">
-                        <Swatch p={prodForm} className="w-14 h-14 rounded-lg border shadow-sm object-cover" />
-                        {prodForm.image && (
-                          <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5">
-                            <Check size={10} />
-                          </span>
-                        )}
-                      </div>
-                    </div>
+                {uploadStatusMsg && (
+                  <p className="text-[11px] font-mono text-emerald-700 mt-1.5 font-medium">
+                    {uploadStatusMsg}
+                  </p>
+                )}
+
+                {/* Photos Gallery Grid */}
+                {prodForm.images && prodForm.images.length > 0 ? (
+                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
+                    {prodForm.images.map((imgSrc, idx) => {
+                      const isCover = idx === 0;
+                      return (
+                        <div
+                          key={idx}
+                          className={`relative group bg-white rounded-lg border-2 overflow-hidden shadow-sm transition-all ${
+                            isCover ? 'border-[var(--mustard-deep)] ring-2 ring-[var(--mustard)]/40' : 'border-gray-200 hover:border-gray-400'
+                          }`}
+                        >
+                          <div className="h-20 w-full bg-gray-100 relative">
+                            <img src={imgSrc} alt={`Garment ${idx + 1}`} className="w-full h-full object-cover" />
+                            
+                            <div className="absolute top-1 left-1">
+                              {isCover ? (
+                                <span className="bg-[var(--mustard)] text-[var(--ink)] font-mono text-[8px] font-extrabold px-1 py-0.5 rounded shadow">
+                                  ★ COVER
+                                </span>
+                              ) : (
+                                <span className="bg-black/70 text-white font-mono text-[8.5px] font-bold px-1.5 py-0.5 rounded">
+                                  #{idx + 1}
+                                </span>
+                              )}
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleRemovePhoto(idx)}
+                              className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-700 text-white w-4 h-4 rounded-full flex items-center justify-center text-[9px] font-bold shadow"
+                              title="Remove photo"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div className="p-1 bg-gray-50 flex items-center justify-between text-[9px] font-mono border-t">
+                            {!isCover ? (
+                              <button
+                                type="button"
+                                onClick={() => handleMakeCoverPhoto(idx)}
+                                className="text-amber-800 hover:text-black font-bold truncate underline"
+                              >
+                                Set Cover
+                              </button>
+                            ) : (
+                              <span className="text-emerald-700 font-bold">Cover Photo</span>
+                            )}
+
+                            <div className="flex gap-0.5 ml-auto">
+                              {idx > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMovePhoto(idx, -1)}
+                                  className="px-1 py-0.2 bg-white border rounded hover:bg-gray-100 text-gray-700 font-bold"
+                                  title="Move Left"
+                                >
+                                  ←
+                                </button>
+                              )}
+                              {idx < prodForm.images.length - 1 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleMovePhoto(idx, 1)}
+                                  className="px-1 py-0.2 bg-white border rounded hover:bg-gray-100 text-gray-700 font-bold"
+                                  title="Move Right"
+                                >
+                                  →
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="p-2 bg-white rounded border text-center text-gray-400 font-mono text-[10px]">
+                    No photos attached yet. Default gradient will be used.
+                  </div>
+                )}
+
+                {/* Dual fabric color pickers */}
+                <div className="pt-2 border-t flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                  <span className="font-mono text-gray-600">Dual Fabric Gradient (Fallback):</span>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="color"
+                      value={prodForm.c1}
+                      onChange={(e) => setProdForm({ ...prodForm, c1: e.target.value })}
+                      className="h-7 w-9 cursor-pointer border rounded"
+                      title="Primary Color"
+                    />
+                    <input
+                      type="color"
+                      value={prodForm.c2}
+                      onChange={(e) => setProdForm({ ...prodForm, c2: e.target.value })}
+                      className="h-7 w-9 cursor-pointer border rounded"
+                      title="Secondary Color"
+                    />
+                  </div>
+                </div>
+
+                {/* Live Preview */}
+                <div className="mt-3 flex items-center gap-3">
+                  <span className="text-xs text-gray-500 font-mono">Storefront Preview:</span>
+                  <div className="relative">
+                    <Swatch p={prodForm} className="w-14 h-14 rounded-lg border shadow-sm object-cover" />
+                    {prodForm.image && (
+                      <span className="absolute -top-1.5 -right-1.5 bg-emerald-500 text-white rounded-full p-0.5">
+                        <Check size={10} />
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

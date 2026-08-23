@@ -51,10 +51,88 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
       </div>
 
       <div className="grid md:grid-cols-2 gap-10">
-        {/* Left: Product Media / Swatch */}
-        <div className="tag-card relative overflow-hidden">
-          <div className="tag-hole" />
-          <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="h-80 md:h-[460px] w-full" />
+        {/* Left: Product Media / Multi-Photo Gallery */}
+        <div className="space-y-3">
+          <div className="tag-card relative overflow-hidden group">
+            <div className="tag-hole" />
+            {Array.isArray(product.images) && product.images.length > 0 ? (
+              <div className="relative h-80 md:h-[460px] w-full bg-white flex items-center justify-center overflow-hidden">
+                <img
+                  src={product.images[mainImgIdx] || product.images[0]}
+                  alt={`${product.name} - Photo ${mainImgIdx + 1}`}
+                  className="w-full h-full object-cover transition-all duration-300"
+                />
+
+                {/* Navigation Arrows for Multi-Photo */}
+                {product.images.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMainImgIdx((prev) => (prev > 0 ? prev - 1 : product.images.length - 1));
+                      }}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10 text-base"
+                      title="Previous Photo"
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setMainImgIdx((prev) => (prev < product.images.length - 1 ? prev + 1 : 0));
+                      }}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10 text-base"
+                      title="Next Photo"
+                    >
+                      ›
+                    </button>
+
+                    <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm text-white font-mono text-[10px] font-bold px-2.5 py-1 rounded-full shadow z-10 flex items-center gap-1">
+                      <span>📷</span>
+                      <span>{mainImgIdx + 1} / {product.images.length}</span>
+                    </div>
+                  </>
+                )}
+
+                {isProductOutOfStock && (
+                  <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center z-20">
+                    <span className="font-mono text-xs text-white bg-black/80 px-3 py-1 rounded border border-white/30 tracking-widest uppercase">
+                      Out of stock
+                    </span>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="h-80 md:h-[460px] w-full" />
+            )}
+          </div>
+
+          {/* Thumbnails Strip */}
+          {Array.isArray(product.images) && product.images.length > 1 && (
+            <div className="flex gap-2.5 overflow-x-auto pb-1">
+              {product.images.map((img, idx) => (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setMainImgIdx(idx)}
+                  className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                    mainImgIdx === idx
+                      ? 'border-[var(--mustard)] ring-2 ring-[var(--mustard)]/50 scale-105 shadow-md'
+                      : 'border-gray-200 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`Thumb ${idx + 1}`} className="w-full h-full object-cover" />
+                  {idx === 0 && (
+                    <span className="absolute top-0 left-0 bg-[var(--mustard)] text-[var(--ink)] text-[7.5px] font-mono font-bold px-1 rounded-br">
+                      COVER
+                    </span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Right: Garment Information & Purchasing */}

@@ -856,10 +856,12 @@ function doPost(e) {
     function Swatch({ p, className = "" }) {
       if (!p) return <div className={`bg-gray-200 ${className}`} />;
 
-      if (p.image) {
+      const displayImg = (Array.isArray(p.images) && p.images.length > 0) ? p.images[0] : p.image;
+
+      if (displayImg) {
         return (
           <div className={`relative overflow-hidden bg-cover bg-center ${className}`}>
-            <img src={p.image} alt={p.name} className="w-full h-full object-cover" />
+            <img src={displayImg} alt={p.name} className="w-full h-full object-cover" />
             {!p.inStock && (
               <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-10">
                 <span className="font-mono text-[10px] text-white bg-black/90 px-2 py-0.5 rounded tracking-widest uppercase">OUT OF STOCK</span>
@@ -996,8 +998,13 @@ function doPost(e) {
       return (
         <div className={`tag-card flex flex-col ${isOut ? 'opacity-85' : ''}`}>
           <div className="tag-hole" />
-          <button onClick={() => onOpen(p)} className="w-full text-left">
+          <button onClick={() => onOpen(p)} className="w-full text-left relative group">
             <Swatch p={{ ...p, inStock: !isOut }} className="h-44 sm:h-48 w-full" />
+            {Array.isArray(p.images) && p.images.length > 1 && (
+              <span className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow z-10 flex items-center gap-1">
+                📷 {p.images.length}
+              </span>
+            )}
           </button>
 
           <button
@@ -1066,14 +1073,29 @@ function doPost(e) {
       const [sizeError, setSizeError] = useState("");
       const [qty, setQty] = useState(1);
       const [added, setAdded] = useState(false);
+      const [activePhotoIdx, setActivePhotoIdx] = useState(0);
 
       if (!product) return null;
+
+      const photoList = Array.isArray(product.images) && product.images.length > 0
+        ? product.images
+        : (product.image ? [product.image] : []);
 
       const stockObj = typeof product.stock === "object" ? product.stock : {};
       const selectedSizeStock = size ? Number(stockObj[size] ?? 0) : 0;
       const isSizeOutOfStock = size ? selectedSizeStock === 0 : false;
       const isProductOutOfStock = !product.inStock || Object.values(stockObj).every(v => Number(v) === 0);
       const sizesList = product.sizes || ["S", "M", "L", "XL", "XXL"];
+
+      const handlePrevPhoto = (e) => {
+        e.stopPropagation();
+        setActivePhotoIdx((prev) => (prev > 0 ? prev - 1 : photoList.length - 1));
+      };
+
+      const handleNextPhoto = (e) => {
+        e.stopPropagation();
+        setActivePhotoIdx((prev) => (prev < photoList.length - 1 ? prev + 1 : 0));
+      };
 
       return (
         <div className="max-w-4xl mx-auto px-4 py-8">
@@ -1091,9 +1113,85 @@ function doPost(e) {
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
-            <div className="tag-card">
-              <div className="tag-hole" />
-              <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="h-80 md:h-[420px] rounded" />
+            {/* Left Column: Product Photo Gallery */}
+            <div className="space-y-3">
+              <div className="tag-card relative group">
+                <div className="tag-hole" />
+                
+                {photoList.length > 0 ? (
+                  <div className="relative h-80 md:h-[420px] rounded overflow-hidden bg-white flex items-center justify-center">
+                    <img
+                      src={photoList[activePhotoIdx] || photoList[0]}
+                      alt={`${product.name} - Photo ${activePhotoIdx + 1}`}
+                      className="w-full h-full object-cover transition-all duration-300"
+                    />
+
+                    {/* Navigation Arrows for Multi-Photo */}
+                    {photoList.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={handlePrevPhoto}
+                          className="absolute left-2.5 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10"
+                          title="Previous Photo"
+                        >
+                          ‹
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleNextPhoto}
+                          className="absolute right-2.5 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-8 h-8 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10"
+                          title="Next Photo"
+                        >
+                          ›
+                        </button>
+                        
+                        {/* Photo Count Indicator Badge */}
+                        <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm text-white font-mono text-[10px] font-bold px-2 py-0.5 rounded-full shadow z-10 flex items-center gap-1">
+                          <span>📷</span>
+                          <span>{activePhotoIdx + 1} / {photoList.length}</span>
+                        </div>
+                      </>
+                    )}
+
+                    {isProductOutOfStock && (
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center z-20">
+                        <span className="font-mono text-xs text-white bg-black/90 px-3 py-1 rounded tracking-widest uppercase">OUT OF STOCK</span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="h-80 md:h-[420px] rounded" />
+                )}
+              </div>
+
+              {/* Thumbnails Row */}
+              {photoList.length > 1 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+                  {photoList.map((imgUrl, idx) => {
+                    const isActive = idx === activePhotoIdx;
+                    return (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => setActivePhotoIdx(idx)}
+                        className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
+                          isActive
+                            ? 'border-[var(--mustard)] ring-2 ring-[var(--mustard)]/50 scale-105 shadow-md'
+                            : 'border-gray-200 opacity-70 hover:opacity-100 hover:border-gray-400'
+                        }`}
+                      >
+                        <img src={imgUrl} alt={`Thumbnail ${idx + 1}`} className="w-full h-full object-cover" />
+                        {idx === 0 && (
+                          <span className="absolute top-0 left-0 bg-[var(--mustard)] text-[var(--ink)] text-[7.5px] font-mono font-bold px-1 rounded-br">
+                            COVER
+                          </span>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <div className="flex items-center gap-2">
@@ -2089,9 +2187,11 @@ function doPost(e) {
 
       const [form, setForm] = useState({
         name: "", category: "Formal Shirts", brand: "Zodiac", price: 1499, mrp: 1899,
-        c1: "#1B2A4A", c2: "#0D1830", image: null,
+        c1: "#1B2A4A", c2: "#0D1830", image: null, images: [],
         stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 }, inStock: true
       });
+      const [isUploadingImages, setIsUploadingImages] = useState(false);
+      const [directImageUrl, setDirectImageUrl] = useState("");
 
       const totalRev = orders.reduce((s, o) => s + (o.total || 0), 0);
       const outOfStockCount = products.filter((p) => {
@@ -2108,16 +2208,109 @@ function doPost(e) {
         return true;
       });
 
-      const handleImageFile = async (e) => {
-        const file = e.target.files[0];
-        if (!file) return;
-        const compressed = await compressImageFile(file);
-        if (compressed) {
-          setForm((prev) => ({ ...prev, image: compressed }));
-        } else {
-          const r = new FileReader();
-          r.onloadend = () => setForm((prev) => ({ ...prev, image: r.result }));
-          r.readAsDataURL(file);
+      const handleImageFiles = async (e) => {
+        const files = Array.from(e.target.files || []);
+        if (!files.length) return;
+        setIsUploadingImages(true);
+        try {
+          const compressedList = [];
+          for (const file of files) {
+            const res = await compressImageFile(file);
+            if (res) {
+              compressedList.push(res);
+            } else {
+              const dataUrl = await new Promise((resolve) => {
+                const r = new FileReader();
+                r.onloadend = () => resolve(r.result);
+                r.onerror = () => resolve(null);
+                r.readAsDataURL(file);
+              });
+              if (dataUrl) compressedList.push(dataUrl);
+            }
+          }
+          if (compressedList.length > 0) {
+            setForm((prev) => {
+              const existing = Array.isArray(prev.images) && prev.images.length > 0
+                ? prev.images
+                : (prev.image ? [prev.image] : []);
+              const merged = [...existing, ...compressedList];
+              return {
+                ...prev,
+                images: merged,
+                image: merged[0] || null
+              };
+            });
+          }
+        } catch (err) {
+          console.error("Error processing photos:", err);
+        } finally {
+          setIsUploadingImages(false);
+          e.target.value = "";
+        }
+      };
+
+      const handleAddDirectUrl = () => {
+        const url = directImageUrl.trim();
+        if (!url) return;
+        setForm((prev) => {
+          const existing = Array.isArray(prev.images) && prev.images.length > 0
+            ? prev.images
+            : (prev.image ? [prev.image] : []);
+          const merged = [...existing, url];
+          return {
+            ...prev,
+            images: merged,
+            image: merged[0] || null
+          };
+        });
+        setDirectImageUrl("");
+      };
+
+      const handleRemovePhoto = (indexToRemove) => {
+        setForm((prev) => {
+          const existing = Array.isArray(prev.images) ? prev.images : (prev.image ? [prev.image] : []);
+          const updated = existing.filter((_, idx) => idx !== indexToRemove);
+          return {
+            ...prev,
+            images: updated,
+            image: updated[0] || null
+          };
+        });
+      };
+
+      const handleMakeCoverPhoto = (indexToCover) => {
+        setForm((prev) => {
+          const existing = Array.isArray(prev.images) ? [...prev.images] : (prev.image ? [prev.image] : []);
+          if (indexToCover < 0 || indexToCover >= existing.length) return prev;
+          const [selected] = existing.splice(indexToCover, 1);
+          existing.unshift(selected);
+          return {
+            ...prev,
+            images: existing,
+            image: existing[0] || null
+          };
+        });
+      };
+
+      const handleMovePhoto = (fromIdx, direction) => {
+        setForm((prev) => {
+          const existing = Array.isArray(prev.images) ? [...prev.images] : (prev.image ? [prev.image] : []);
+          const toIdx = fromIdx + direction;
+          if (toIdx < 0 || toIdx >= existing.length) return prev;
+          const temp = existing[fromIdx];
+          existing[fromIdx] = existing[toIdx];
+          existing[toIdx] = temp;
+          return {
+            ...prev,
+            images: existing,
+            image: existing[0] || null
+          };
+        });
+      };
+
+      const handleClearAllPhotos = () => {
+        if (window.confirm("Remove all attached photos from this garment?")) {
+          setForm((prev) => ({ ...prev, images: [], image: null }));
         }
       };
 
@@ -2237,6 +2430,9 @@ function doPost(e) {
 
       const openEditGarment = (p) => {
         setEditingProd(p);
+        const existingImgs = Array.isArray(p.images) && p.images.length > 0
+          ? [...p.images]
+          : (p.image ? [p.image] : []);
         setForm({
           name: p.name || "",
           category: p.category || categories[0]?.name || "Formal Shirts",
@@ -2245,10 +2441,12 @@ function doPost(e) {
           mrp: p.mrp || 1899,
           c1: p.c1 || "#1B2A4A",
           c2: p.c2 || "#0D1830",
-          image: p.image || null,
+          images: existingImgs,
+          image: existingImgs[0] || p.image || null,
           stock: typeof p.stock === 'object' ? { ...p.stock } : { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
           inStock: p.inStock
         });
+        setDirectImageUrl("");
         setIsModalOpen(true);
       };
 
@@ -2262,10 +2460,12 @@ function doPost(e) {
           mrp: 1899,
           c1: "#1B2A4A",
           c2: "#0D1830",
+          images: [],
           image: null,
           stock: { S: 10, M: 10, L: 8, XL: 5, XXL: 2 },
           inStock: true
         });
+        setDirectImageUrl("");
         setIsModalOpen(true);
       };
 
@@ -2274,14 +2474,24 @@ function doPost(e) {
         const totalSt = Object.values(form.stock).reduce((a, b) => a + Number(b), 0);
         const finalIn = totalSt > 0 && form.inStock;
 
+        const cleanImages = Array.isArray(form.images) ? form.images.filter(Boolean) : (form.image ? [form.image] : []);
+        const primaryImage = cleanImages[0] || form.image || null;
+
+        const payload = {
+          ...form,
+          images: cleanImages,
+          image: primaryImage,
+          inStock: finalIn
+        };
+
         let updatedProducts;
         let savedProd;
         if (editingProd) {
-          savedProd = { ...editingProd, ...form, inStock: finalIn };
+          savedProd = { ...editingProd, ...payload };
           updatedProducts = products.map((p) => (p.id === editingProd.id ? savedProd : p));
         } else {
           savedProd = {
-            ...form,
+            ...payload,
             id: `YD-${100 + products.length + Math.floor(Math.random() * 80)}`,
             inStock: finalIn,
             rating: "4.8",
@@ -2817,11 +3027,11 @@ function doPost(e) {
           {/* EDIT / ADD GARMENT MODAL */}
           {isModalOpen && (
             <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl max-w-lg w-full p-6 shadow-2xl space-y-4 border border-[var(--line)]">
+              <div className="bg-white rounded-xl max-w-xl w-full p-6 shadow-2xl space-y-4 border border-[var(--line)] max-h-[92vh] overflow-y-auto">
                 <div className="flex justify-between border-b pb-3 items-center">
                   <div>
                     <h3 className="font-bold text-base">{editingProd ? `Edit Garment (${editingProd.id})` : 'Add New Garment to Workroom'}</h3>
-                    <p className="text-[11px] text-gray-500 font-mono">Fill in garment details, select type/brand &amp; set before/after prices.</p>
+                    <p className="text-[11px] text-gray-500 font-mono">Fill in garment details, add multiple photos, set prices &amp; stock per size.</p>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="text-gray-500 hover:text-black font-bold text-base">✕</button>
                 </div>
@@ -2910,16 +3120,183 @@ function doPost(e) {
                     </div>
                   </div>
 
-                  {/* 4. Garment Photo Upload */}
-                  <div>
-                    <label className="text-xs font-mono font-bold block mb-1">6. Garment Photo (Upload Image File)</label>
-                    <input type="file" accept="image/*" onChange={handleImageFile} className="text-xs w-full border p-2 rounded bg-gray-50" />
-                    {form.image && (
-                      <div className="mt-2 flex items-center gap-3 p-2 bg-emerald-50 rounded border border-emerald-200">
-                        <img src={form.image} alt="Preview" className="w-12 h-12 object-cover rounded border" />
-                        <span className="text-[11px] text-emerald-800 font-mono font-bold">✓ Custom Photo Uploaded</span>
+                  {/* 4. Garment Photos (Multiple Upload & Reorder) */}
+                  <div className="bg-gray-50/80 p-3.5 rounded-xl border space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <label className="text-xs font-mono font-bold block text-gray-900">
+                          6. Garment Photos ({form.images?.length || 0} Attached)
+                        </label>
+                        <span className="text-[10px] text-gray-500 block">
+                          Upload multiple photos (front, back, model, fabric). The 1st photo is the Cover image.
+                        </span>
+                      </div>
+                      {form.images && form.images.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={handleClearAllPhotos}
+                          className="text-[10px] font-mono text-red-600 hover:text-red-800 underline cursor-pointer"
+                        >
+                          Clear All
+                        </button>
+                      )}
+                    </div>
+
+                    {/* File Upload & URL Inputs */}
+                    <div className="space-y-2">
+                      <label className="block cursor-pointer">
+                        <div className="border-2 border-dashed border-gray-300 hover:border-gray-900 bg-white rounded-lg p-3 text-center transition-colors">
+                          <span className="font-mono text-xs font-bold text-gray-800 flex items-center justify-center gap-1.5">
+                            <span>📸</span>
+                            <span>{isUploadingImages ? "Processing photos..." : "+ Choose / Drop Multiple Photos"}</span>
+                          </span>
+                          <span className="text-[10px] text-gray-400 block mt-0.5">Select one or multiple photos from phone / computer</span>
+                        </div>
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={handleImageFiles}
+                          disabled={isUploadingImages}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* Direct URL input */}
+                      <div className="flex gap-1.5">
+                        <input
+                          type="url"
+                          placeholder="Or paste direct image Web URL (https://...)"
+                          value={directImageUrl}
+                          onChange={(e) => setDirectImageUrl(e.target.value)}
+                          className="flex-1 border bg-white rounded px-2.5 py-1.5 text-[11px] font-mono outline-none focus:border-black"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleAddDirectUrl}
+                          disabled={!directImageUrl.trim()}
+                          className="yd-btn px-3 py-1.5 text-[11px] font-bold bg-gray-800 text-white hover:bg-black disabled:opacity-40"
+                        >
+                          + Add URL
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Image Processing Loader */}
+                    {isUploadingImages && (
+                      <div className="p-2.5 bg-amber-50 rounded border border-amber-200 text-amber-900 font-mono text-[11px] flex items-center gap-2 animate-pulse">
+                        <span>⏳</span>
+                        <span>Optimizing &amp; attaching garment photos...</span>
                       </div>
                     )}
+
+                    {/* Photos Gallery Grid */}
+                    {form.images && form.images.length > 0 ? (
+                      <div className="grid grid-cols-3 sm:grid-cols-4 gap-2.5 pt-1">
+                        {form.images.map((imgSrc, idx) => {
+                          const isCover = idx === 0;
+                          return (
+                            <div
+                              key={idx}
+                              className={`relative group bg-white rounded-lg border-2 overflow-hidden shadow-sm transition-all ${
+                                isCover ? 'border-[var(--mustard-deep)] ring-2 ring-[var(--mustard)]/40' : 'border-gray-200 hover:border-gray-400'
+                              }`}
+                            >
+                              <div className="h-24 w-full bg-gray-100 relative">
+                                <img src={imgSrc} alt={`Garment photo ${idx + 1}`} className="w-full h-full object-cover" />
+                                
+                                {/* Badge */}
+                                <div className="absolute top-1 left-1">
+                                  {isCover ? (
+                                    <span className="bg-[var(--mustard)] text-[var(--ink)] font-mono text-[8px] font-extrabold px-1.5 py-0.5 rounded shadow">
+                                      ★ COVER
+                                    </span>
+                                  ) : (
+                                    <span className="bg-black/70 text-white font-mono text-[8.5px] font-bold px-1.5 py-0.5 rounded">
+                                      #{idx + 1}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Delete Button */}
+                                <button
+                                  type="button"
+                                  onClick={() => handleRemovePhoto(idx)}
+                                  className="absolute top-1 right-1 bg-red-600/90 hover:bg-red-700 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shadow transition-transform active:scale-90"
+                                  title="Remove photo"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+
+                              {/* Action controls */}
+                              <div className="p-1 bg-gray-50 flex items-center justify-between text-[9px] font-mono border-t">
+                                {!isCover ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMakeCoverPhoto(idx)}
+                                    className="text-amber-800 hover:text-black font-bold truncate underline"
+                                    title="Make this the storefront cover photo"
+                                  >
+                                    Set Cover
+                                  </button>
+                                ) : (
+                                  <span className="text-emerald-700 font-bold">Main Photo</span>
+                                )}
+
+                                <div className="flex gap-0.5 ml-auto">
+                                  {idx > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMovePhoto(idx, -1)}
+                                      className="px-1 py-0.5 bg-white border rounded hover:bg-gray-100 text-gray-700 font-bold"
+                                      title="Move Left"
+                                    >
+                                      ←
+                                    </button>
+                                  )}
+                                  {idx < form.images.length - 1 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMovePhoto(idx, 1)}
+                                      className="px-1 py-0.5 bg-white border rounded hover:bg-gray-100 text-gray-700 font-bold"
+                                      title="Move Right"
+                                    >
+                                      →
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <div className="p-3 bg-white rounded border text-center text-gray-400 font-mono text-[11px]">
+                        No custom photos attached yet.
+                      </div>
+                    )}
+
+                    {/* Dual fabric color pickers */}
+                    <div className="pt-2 border-t flex items-center justify-between flex-wrap gap-2 text-[11px]">
+                      <span className="font-mono text-gray-600">Dual Color Hue (Fallback swatch):</span>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="color"
+                          value={form.c1}
+                          onChange={(e) => setForm({ ...form, c1: e.target.value })}
+                          className="h-7 w-9 cursor-pointer border rounded"
+                          title="Primary Color"
+                        />
+                        <input
+                          type="color"
+                          value={form.c2}
+                          onChange={(e) => setForm({ ...form, c2: e.target.value })}
+                          className="h-7 w-9 cursor-pointer border rounded"
+                          title="Secondary Color"
+                        />
+                      </div>
+                    </div>
                   </div>
 
                   {/* 5. Stock Quantity Per Size */}
