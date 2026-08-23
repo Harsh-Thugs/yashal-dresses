@@ -46,7 +46,7 @@ export function saveProducts(products, syncToCloud = true) {
   if (syncToCloud && Array.isArray(products)) {
     // Background cloud sync for any modified products
     products.forEach((p) => {
-      saveProductToFirestore(p).catch(() => {});
+      saveProductToFirestore(p).catch(() => { });
     });
   }
 }
@@ -55,7 +55,7 @@ export function removeProduct(productId) {
   const current = loadProducts();
   const updated = current.filter((p) => p.id !== productId);
   safeSave(STORAGE_KEYS.PRODUCTS, updated);
-  deleteProductFromFirestore(productId).catch(() => {});
+  deleteProductFromFirestore(productId).catch(() => { });
   return updated;
 }
 
@@ -66,7 +66,7 @@ export function loadCategories() {
 export function saveCategories(categories, syncToCloud = true) {
   safeSave(STORAGE_KEYS.CATEGORIES, categories);
   if (syncToCloud && Array.isArray(categories)) {
-    syncCategoriesToFirestore(categories).catch(() => {});
+    syncCategoriesToFirestore(categories).catch(() => { });
   }
 }
 
@@ -98,7 +98,7 @@ export function saveOrders(orders, syncToCloud = true) {
   safeSave(STORAGE_KEYS.ORDERS, orders);
   if (syncToCloud && Array.isArray(orders) && orders.length > 0) {
     const latest = orders[0];
-    saveOrderToFirestore(latest).catch(() => {});
+    saveOrderToFirestore(latest).catch(() => { });
   }
 }
 
@@ -152,7 +152,7 @@ export function deductStockForOrder(orderItems, currentProducts) {
     };
 
     // Sync individual product stock update to Firestore
-    saveProductToFirestore(updatedProd).catch(() => {});
+    saveProductToFirestore(updatedProd).catch(() => { });
 
     return updatedProd;
   });
