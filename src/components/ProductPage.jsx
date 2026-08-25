@@ -36,6 +36,11 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
     }
   };
 
+  const productImages = (Array.isArray(product.images) && product.images.length > 0)
+    ? product.images
+    : (product.image ? [product.image] : []);
+  const activeImgSrc = productImages[mainImgIdx] || productImages[0];
+
   return (
     <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
       <div className="flex items-center gap-3 mb-6">
@@ -55,22 +60,22 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
         <div className="space-y-3">
           <div className="tag-card relative overflow-hidden group">
             <div className="tag-hole" />
-            {Array.isArray(product.images) && product.images.length > 0 ? (
+            {productImages.length > 0 ? (
               <div className="relative h-80 md:h-[460px] w-full bg-white flex items-center justify-center overflow-hidden">
                 <img
-                  src={product.images[mainImgIdx] || product.images[0]}
+                  src={activeImgSrc}
                   alt={`${product.name} - Photo ${mainImgIdx + 1}`}
                   className="w-full h-full object-cover transition-all duration-300"
                 />
 
                 {/* Navigation Arrows for Multi-Photo */}
-                {product.images.length > 1 && (
+                {productImages.length > 1 && (
                   <>
                     <button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setMainImgIdx((prev) => (prev > 0 ? prev - 1 : product.images.length - 1));
+                        setMainImgIdx((prev) => (prev > 0 ? prev - 1 : productImages.length - 1));
                       }}
                       className="absolute left-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10 text-base"
                       title="Previous Photo"
@@ -81,7 +86,7 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
-                        setMainImgIdx((prev) => (prev < product.images.length - 1 ? prev + 1 : 0));
+                        setMainImgIdx((prev) => (prev < productImages.length - 1 ? prev + 1 : 0));
                       }}
                       className="absolute right-3 top-1/2 -translate-y-1/2 bg-black/60 hover:bg-black text-white w-9 h-9 rounded-full flex items-center justify-center backdrop-blur-sm shadow-md transition-transform active:scale-90 font-bold z-10 text-base"
                       title="Next Photo"
@@ -91,7 +96,7 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
 
                     <div className="absolute bottom-3 right-3 bg-black/75 backdrop-blur-sm text-white font-mono text-[10px] font-bold px-2.5 py-1 rounded-full shadow z-10 flex items-center gap-1">
                       <span>📷</span>
-                      <span>{mainImgIdx + 1} / {product.images.length}</span>
+                      <span>{mainImgIdx + 1} / {productImages.length}</span>
                     </div>
                   </>
                 )}
@@ -110,9 +115,9 @@ export default function ProductPage({ product, setPage, goBack, addToCart, wishl
           </div>
 
           {/* Thumbnails Strip */}
-          {Array.isArray(product.images) && product.images.length > 1 && (
+          {productImages.length > 1 && (
             <div className="flex gap-2.5 overflow-x-auto pb-1">
-              {product.images.map((img, idx) => (
+              {productImages.map((img, idx) => (
                 <button
                   key={idx}
                   type="button"

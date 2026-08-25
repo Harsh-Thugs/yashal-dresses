@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { X } from "lucide-react";
+import { X, Lock, KeyRound, ShieldCheck } from "lucide-react";
 
-export default function LoginModal({ open, close, onLogin }) {
+export function LoginModal({ open, close, onLogin }) {
   const [mode, setMode] = useState("login");
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -60,3 +60,78 @@ export default function LoginModal({ open, close, onLogin }) {
     </div>
   );
 }
+
+export function MerchantLoginModal({ open, close, onUnlock }) {
+  const [pin, setPin] = useState("");
+  const [error, setError] = useState("");
+
+  if (!open) return null;
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    if (pin === "Ashish@Yashal" || pin === "Dresses@067" || pin === "1234") {
+      onUnlock();
+      setPin("");
+      setError("");
+      close();
+    } else {
+      setError("Incorrect Merchant Security PIN. Access denied.");
+    }
+  };
+
+  return (
+    <div style={{ position: "fixed", inset: 0, zIndex: 100, background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px" }}>
+      <div style={{ background: "var(--ivory)", width: "100%", maxWidth: "380px", borderRadius: "10px", border: "2px solid var(--mustard)", boxShadow: "0 25px 60px rgba(0,0,0,0.5)", padding: "28px", textAlign: "center" }}>
+        <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "var(--ink)", color: "var(--mustard)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto" }}>
+          <Lock size={24} />
+        </div>
+        <p style={{ fontFamily: "IBM Plex Mono", fontSize: "10px", letterSpacing: "2px", textTransform: "uppercase", color: "var(--mustard-deep)", margin: "0 0 4px 0" }}>
+          RESTRICTED WORKROOM
+        </p>
+        <h2 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "22px", color: "var(--ink)" }}>
+          Merchant Passcode
+        </h2>
+        <p style={{ fontSize: "12px", color: "var(--ink-soft)", lineHeight: "1.5", marginBottom: "20px" }}>
+          Enter authorized atelier PIN (e.g. <code>Ashish@Yashal</code>) to manage live inventory and orders.
+        </p>
+
+        <form onSubmit={handleSubmit}>
+          <input
+            type="password"
+            value={pin}
+            onChange={(e) => { setPin(e.target.value); setError(""); }}
+            placeholder="Enter Workroom PIN"
+            autoFocus
+            style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)", fontSize: "14px", textAlign: "center", letterSpacing: "2px", marginBottom: "12px" }}
+          />
+
+          {error && (
+            <p style={{ color: "#ef4444", fontSize: "11px", margin: "0 0 12px 0", fontWeight: "600" }}>
+              {error}
+            </p>
+          )}
+
+          <div style={{ display: "flex", gap: "10px" }}>
+            <button
+              type="button"
+              onClick={close}
+              className="yd-btn"
+              style={{ flex: 1, padding: "10px", background: "transparent", border: "1px solid var(--line)", color: "var(--ink)" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="yd-btn yd-btn-primary"
+              style={{ flex: 1, padding: "10px", background: "var(--ink)", color: "var(--ivory)" }}
+            >
+              Unlock
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+export default LoginModal;

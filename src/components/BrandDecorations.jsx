@@ -463,3 +463,35 @@ export function Swatch({ p, className = "" }) {
     </div>
   );
 }
+
+export function WaxSeal({ size = 48, className = "" }) {
+  return (
+    <div
+      className={`relative flex items-center justify-center rounded-full shadow-lg ${className}`}
+      style={{
+        width: `${size}px`,
+        height: `${size}px`,
+        background: "radial-gradient(circle at 35% 35%, #8B1E3F, #4A0E22)",
+        border: "2px solid #D4AF37",
+        boxShadow: "0 4px 12px rgba(74, 14, 34, 0.4)",
+      }}
+    >
+      <div
+        className="rounded-full border border-[#D4AF37]/50 flex items-center justify-center"
+        style={{ width: `${size * 0.72}px`, height: `${size * 0.72}px` }}
+      >
+        <span
+          style={{
+            fontFamily: "'Fraunces', serif",
+            color: "#D4AF37",
+            fontSize: `${size * 0.36}px`,
+            fontWeight: "700",
+            lineHeight: 1,
+          }}
+        >
+          Y
+        </span>
+      </div>
+    </div>
+  );
+}

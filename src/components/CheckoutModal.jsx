@@ -1,577 +1,491 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ShieldCheck, CreditCard, QrCode, Building2, Lock, CheckCircle2,
-  AlertCircle, Download, FileText, ArrowLeft, RefreshCw, Smartphone, Send
+  AlertCircle, Download, FileText, ArrowLeft, RefreshCw, Smartphone, Send, Printer, ExternalLink
 } from "lucide-react";
-import { AnimatedSwingTag } from "./BrandDecorations";
-import { generateOrderMailtoUrl } from "../utils/emailSync.js";
+import { AnimatedSwingTag, Crest, WaxSeal } from "./BrandDecorations";
+import { money, STORE_CONTACT } from "../data/initialData";
 
-const money = (n) => `₹${n.toLocaleString("en-IN")}`;
-
-export default function CheckoutPage({ cart, products, setPage, placeOrder, user }) {
+/* ----------------------------- CHECKOUT PAGE ----------------------------- */
+export function CheckoutPage({
+  cart,
+  products,
+  setPage,
+  onProceedToPayment,
+  user
+}) {
   const items = cart
     .map((c) => ({ ...c, product: products.find((p) => p.id === c.id) }))
     .filter((i) => Boolean(i.product));
 
-  const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
+  const subtotal = items.reduce((s, i) => s + i.product.price * i.quantity, 0);
   const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
-  const tax = Math.round(subtotal * 0.05); // 5% GST calculation
   const total = subtotal + shipping;
 
   const [form, setForm] = useState({
-    name: user?.name || "",
-    phone: "",
-    email: user?.email || "",
-    line1: "",
-    city: "Pune",
-    state: "Maharashtra",
-    pincode: "411001"
+    name: user?.name || "Patron",
+    phone: "9822019283",
+    email: user?.email || "patron@example.com",
+    address: "Bungalow No. 4, Model Colony, Pune - 411016",
+    notes: "",
   });
 
-  const [paymentMethod, setPaymentMethod] = useState("upi");
-  const [upiId, setUpiId] = useState("");
-  const [cardInfo, setCardInfo] = useState({ number: "", expiry: "", cvv: "", name: "" });
-  const [selectedBank, setSelectedBank] = useState("HDFC Bank");
+  const [paymentMode, setPaymentMode] = useState("upi"); // 'upi' | 'card' | 'cod'
 
-  // Payment states
-  const [isProcessing, setIsProcessing] = useState(false);
-  const [showOtpModal, setShowOtpModal] = useState(false);
-  const [otp, setOtp] = useState("123456");
-  const [otpTimer, setOtpTimer] = useState(30);
-
-  const setFormKey = (k) => (e) => setForm({ ...form, [k]: e.target.value });
-  const formValid = form.name && form.phone && form.line1 && form.city && form.pincode;
-
-  const handleStartPayment = (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formValid || items.length === 0) return;
-
-    // Trigger Razorpay OTP Verification Modal
-    setShowOtpModal(true);
-  };
-
-  const handleVerifyOtpAndPay = () => {
-    if (!otp || otp.length < 4) return;
-    setShowOtpModal(false);
-    setIsProcessing(true);
-
-    setTimeout(() => {
-      setIsProcessing(false);
-      const txId = `PAY_RZP_${Math.random().toString(36).substring(2, 10).toUpperCase()}`;
-      placeOrder(items, total, form, `Razorpay (${paymentMethod.toUpperCase()})`, txId);
-    }, 1600);
+    if (!form.name || !form.phone || !form.address) {
+      alert("Please fill in all mandatory delivery details.");
+      return;
+    }
+    onProceedToPayment({
+      customer: form,
+      items: items.map(it => ({
+        id: it.product.id,
+        name: it.product.name,
+        brand: it.product.brand || "Yashal",
+        price: it.product.price,
+        size: it.size,
+        quantity: it.quantity,
+        image: (it.product.images && it.product.images[0]) || it.product.image || null,
+      })),
+      subtotal,
+      shipping,
+      total,
+      paymentMethod: paymentMode === "upi" ? "Razorpay UPI / QR" : paymentMode === "card" ? "Razorpay Credit/Debit Card" : "Cash on Delivery",
+    });
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 md:px-6 py-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display text-2xl md:text-3xl font-semibold flex items-center gap-2">
-          <Lock size={22} className="yd-mustard" /> Checkout
-        </h1>
-        <button onClick={() => setPage("shop")} className="font-mono text-xs opacity-70 hover:opacity-100 flex items-center gap-1">
-          <ArrowLeft size={14} /> Continue Shopping
+    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 16px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <button
+          onClick={() => setPage("shop")}
+          style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", color: "var(--ink)", fontFamily: "IBM Plex Mono", fontSize: "12px", cursor: "pointer" }}
+        >
+          ← Return to Atelier Shop
         </button>
+        <span style={{ fontSize: "11px", fontFamily: "IBM Plex Mono", color: "var(--mustard-deep)", letterSpacing: "1px" }}>
+          BESPOKE CHECKOUT & SECURE DISPATCH
+        </span>
       </div>
 
-      <div className="grid md:grid-cols-[1fr_360px] gap-10">
-        
-        {/* Left Column: Delivery details & Razorpay Payment Modes */}
-        <div className="space-y-6">
-          
-          {/* Delivery Address */}
-          <div className="tag-card p-5">
-            <p className="font-mono text-[11px] tracking-widest opacity-60 mb-3 flex items-center gap-2">
-              1 · DELIVERY ADDRESS
-            </p>
-            <div className="grid sm:grid-cols-2 gap-3">
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
+        {/* Left: Customer & Delivery Details */}
+        <form onSubmit={handleSubmit} style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
+          <h2 className="font-display" style={{ fontSize: "20px", margin: "0 0 20px 0", color: "var(--ink)" }}>
+            1. Patron & Delivery Details
+          </h2>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Full Name *</label>
               <input
+                type="text"
+                required
                 value={form.name}
-                onChange={setFormKey("name")}
-                placeholder="Full name *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white sm:col-span-2 outline-none focus:border-[var(--mustard)]"
+                onChange={e => setForm({ ...form, name: e.target.value })}
+                placeholder="e.g. Harshvardhan Shinde"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
               />
-              <input
-                value={form.phone}
-                onChange={setFormKey("phone")}
-                placeholder="10-digit Phone Number *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white outline-none focus:border-[var(--mustard)]"
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Contact Phone *</label>
+                <input
+                  type="tel"
+                  required
+                  value={form.phone}
+                  onChange={e => setForm({ ...form, phone: e.target.value })}
+                  placeholder="e.g. 9822019283"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                />
+              </div>
+              <div>
+                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Email Address</label>
+                <input
+                  type="email"
+                  value={form.email}
+                  onChange={e => setForm({ ...form, email: e.target.value })}
+                  placeholder="For digital invoice"
+                  style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Shipping Address in Full *</label>
+              <textarea
+                required
+                rows={3}
+                value={form.address}
+                onChange={e => setForm({ ...form, address: e.target.value })}
+                placeholder="Flat / Bungalow No., Landmark, City, Pincode"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
               />
+            </div>
+
+            <div>
+              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Tailoring / Fitting Instructions (Optional)</label>
               <input
-                value={form.email}
-                onChange={setFormKey("email")}
-                placeholder="Email Address"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white outline-none focus:border-[var(--mustard)]"
-              />
-              <input
-                value={form.line1}
-                onChange={setFormKey("line1")}
-                placeholder="Flat, House no., Street address *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white sm:col-span-2 outline-none focus:border-[var(--mustard)]"
-              />
-              <input
-                value={form.city}
-                onChange={setFormKey("city")}
-                placeholder="City *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white outline-none focus:border-[var(--mustard)]"
-              />
-              <input
-                value={form.state}
-                onChange={setFormKey("state")}
-                placeholder="State *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white outline-none focus:border-[var(--mustard)]"
-              />
-              <input
-                value={form.pincode}
-                onChange={setFormKey("pincode")}
-                placeholder="Pincode *"
-                className="border border-[var(--line)] rounded px-3 py-2.5 text-sm bg-white sm:col-span-2 outline-none focus:border-[var(--mustard)]"
+                type="text"
+                value={form.notes}
+                onChange={e => setForm({ ...form, notes: e.target.value })}
+                placeholder="e.g. Please hem trousers to 38 inches"
+                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
               />
             </div>
           </div>
 
-          {/* Payment Gateway Box (Razorpay Simulator) */}
-          <div className="tag-card p-5 border-2 border-[var(--ink)] shadow-md">
-            <div className="flex items-center justify-between mb-4 border-b border-[var(--line)] pb-3">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={20} className="text-emerald-700" />
-                <p className="font-mono text-xs tracking-widest font-semibold">2 · RAZORPAY SECURE PAYMENT</p>
+          <h2 className="font-display" style={{ fontSize: "20px", margin: "28px 0 16px 0", color: "var(--ink)" }}>
+            2. Payment Gateway Mode
+          </h2>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "upi" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "upi" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+              <input type="radio" name="pay" checked={paymentMode === "upi"} onChange={() => setPaymentMode("upi")} />
+              <QrCode size={20} color="var(--mustard-deep)" />
+              <div>
+                <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay UPI / Dynamic QR Code</div>
+                <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Google Pay, PhonePe, Paytm, BHIM</div>
               </div>
-              <span className="text-[10px] font-mono bg-blue-100 text-blue-800 px-2 py-0.5 rounded font-bold">256-BIT ENCRYPTED</span>
-            </div>
+            </label>
 
-            {/* Payment Method Selector Tabs */}
-            <div className="grid grid-cols-3 gap-2 mb-4">
-              {[
-                { id: "upi", label: "UPI / QR", icon: QrCode },
-                { id: "card", label: "Card", icon: CreditCard },
-                { id: "netbanking", label: "NetBank", icon: Building2 },
-              ].map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => setPaymentMethod(m.id)}
-                  className={`flex flex-col items-center justify-center p-2.5 rounded border text-xs font-mono transition-all ${
-                    paymentMethod === m.id
-                      ? "bg-[var(--ink)] text-[var(--mustard)] border-[var(--mustard)] shadow"
-                      : "bg-white text-gray-700 border-gray-200 hover:border-[var(--mustard)]"
-                  }`}
-                >
-                  <m.icon size={16} className="mb-1" />
-                  <span className="text-[11px] font-semibold">{m.label}</span>
-                </button>
-              ))}
-            </div>
-
-            {/* UPI Option */}
-            {paymentMethod === "upi" && (
-              <div className="bg-white p-4 rounded border border-gray-200 space-y-4">
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                  <div className="bg-gray-100 p-2 rounded border border-gray-300 flex flex-col items-center">
-                    {/* SVG QR Code Simulation */}
-                    <svg width="100" height="100" viewBox="0 0 100 100" className="bg-white p-1">
-                      <rect width="100" height="100" fill="white" />
-                      <rect x="10" y="10" width="30" height="30" fill="#1A1224" />
-                      <rect x="15" y="15" width="20" height="20" fill="white" />
-                      <rect x="20" y="20" width="10" height="10" fill="#1A1224" />
-                      <rect x="60" y="10" width="30" height="30" fill="#1A1224" />
-                      <rect x="65" y="15" width="20" height="20" fill="white" />
-                      <rect x="70" y="20" width="10" height="10" fill="#1A1224" />
-                      <rect x="10" y="60" width="30" height="30" fill="#1A1224" />
-                      <rect x="15" y="65" width="20" height="20" fill="white" />
-                      <rect x="20" y="70" width="10" height="10" fill="#1A1224" />
-                      <rect x="50" y="50" width="10" height="10" fill="#D4AF37" />
-                      <rect x="60" y="60" width="15" height="15" fill="#1A1224" />
-                      <rect x="80" y="80" width="10" height="10" fill="#1A1224" />
-                    </svg>
-                    <span className="text-[10px] font-mono text-gray-600 mt-1">Scan with GPay / PhonePe / Paytm</span>
-                  </div>
-                  <div className="flex-1 w-full">
-                    <label className="text-xs font-semibold block mb-1">Or enter UPI ID / VPA:</label>
-                    <div className="flex gap-2">
-                      <input
-                        value={upiId}
-                        onChange={(e) => setUpiId(e.target.value)}
-                        placeholder="e.g. name@upi or 9876543210@paytm"
-                        className="border rounded px-3 py-2 text-xs w-full outline-none focus:border-[var(--ink)]"
-                      />
-                    </div>
-                    <p className="text-[11px] text-gray-500 mt-2">Instant payment approval request will be sent to your UPI app.</p>
-                  </div>
-                </div>
+            <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "card" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "card" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+              <input type="radio" name="pay" checked={paymentMode === "card"} onChange={() => setPaymentMode("card")} />
+              <CreditCard size={20} color="var(--mustard-deep)" />
+              <div>
+                <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay Credit / Debit Card & Netbanking</div>
+                <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Visa, Mastercard, RuPay, Corporate Amex</div>
               </div>
-            )}
-
-            {/* Card Option */}
-            {paymentMethod === "card" && (
-              <div className="bg-white p-4 rounded border border-gray-200 space-y-3">
-                <div>
-                  <label className="text-xs font-semibold block mb-1">Card Number</label>
-                  <input
-                    value={cardInfo.number}
-                    onChange={(e) => setCardInfo({ ...cardInfo, number: e.target.value })}
-                    placeholder="4532 •••• •••• 8892"
-                    maxLength={19}
-                    className="border rounded px-3 py-2 text-xs w-full outline-none font-mono"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold block mb-1">Expiry Date</label>
-                    <input
-                      value={cardInfo.expiry}
-                      onChange={(e) => setCardInfo({ ...cardInfo, expiry: e.target.value })}
-                      placeholder="MM / YY"
-                      maxLength={5}
-                      className="border rounded px-3 py-2 text-xs w-full outline-none font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold block mb-1">CVV / CVC</label>
-                    <input
-                      type="password"
-                      value={cardInfo.cvv}
-                      onChange={(e) => setCardInfo({ ...cardInfo, cvv: e.target.value })}
-                      placeholder="•••"
-                      maxLength={4}
-                      className="border rounded px-3 py-2 text-xs w-full outline-none font-mono"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold block mb-1">Cardholder Name</label>
-                  <input
-                    value={cardInfo.name}
-                    onChange={(e) => setCardInfo({ ...cardInfo, name: e.target.value })}
-                    placeholder="Name on card"
-                    className="border rounded px-3 py-2 text-xs w-full outline-none"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Netbanking Option */}
-            {paymentMethod === "netbanking" && (
-              <div className="bg-white p-4 rounded border border-gray-200 space-y-3">
-                <label className="text-xs font-semibold block mb-1">Select Bank:</label>
-                <select
-                  value={selectedBank}
-                  onChange={(e) => setSelectedBank(e.target.value)}
-                  className="yd-select text-xs"
-                >
-                  <option value="HDFC Bank">HDFC Bank</option>
-                  <option value="State Bank of India">State Bank of India (SBI)</option>
-                  <option value="ICICI Bank">ICICI Bank</option>
-                  <option value="Axis Bank">Axis Bank</option>
-                  <option value="Kotak Mahindra Bank">Kotak Mahindra Bank</option>
-                  <option value="Punjab National Bank">Punjab National Bank</option>
-                </select>
-              </div>
-            )}
-
+            </label>
           </div>
-        </div>
 
-        {/* Right Column: Order Summary & Checkout Trigger */}
-        <div className="tag-card p-5 h-fit bg-white">
-          <p className="font-mono text-[11px] tracking-widest opacity-60 mb-3 font-semibold">ORDER SUMMARY</p>
-          
-          <div className="space-y-2 max-h-56 overflow-y-auto mb-3 pr-1 yd-scroll">
-            {items.map((i) => (
-              <div key={i.id + i.size} className="flex justify-between text-xs py-1.5 border-b border-gray-100">
-                <div className="truncate pr-2">
-                  <span className="font-medium text-gray-900">{i.product.name}</span>
-                  <span className="block text-[10px] text-gray-500 font-mono">Size {i.size} × {i.qty}</span>
+          <button
+            type="submit"
+            className="yd-btn yd-btn-primary"
+            style={{ width: "100%", padding: "14px", background: "var(--ink)", color: "var(--ivory)", fontSize: "14px", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+          >
+            <Lock size={16} color="var(--mustard)" /> Proceed to Authorize & Pay {money(total)}
+          </button>
+        </form>
+
+        {/* Right: Order Summary */}
+        <div style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", height: "fit-content" }}>
+          <h3 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "18px" }}>
+            Bag Summary ({items.reduce((s, i) => s + i.quantity, 0)} Items)
+          </h3>
+
+          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", maxHeight: "320px", overflowY: "auto" }}>
+            {items.map((it, idx) => (
+              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px dashed var(--line)", paddingBottom: "10px" }}>
+                <div>
+                  <div style={{ fontWeight: "600", fontSize: "13px" }}>{it.product.name}</div>
+                  <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>
+                    Size: {it.size} • Qty: {it.quantity} • {it.product.brand}
+                  </div>
                 </div>
-                <span className="font-semibold">{money(i.product.price * i.qty)}</span>
+                <div style={{ fontWeight: "600", fontSize: "13px", color: "var(--mustard-deep)" }}>
+                  {money(it.product.price * it.quantity)}
+                </div>
               </div>
             ))}
           </div>
 
-          <div className="divider pt-3 space-y-1.5 text-xs">
-            <div className="flex justify-between text-gray-600"><span>Bag Total</span><span>{money(subtotal)}</span></div>
-            <div className="flex justify-between text-gray-600"><span>Estimated GST (5%)</span><span>{money(tax)}</span></div>
-            <div className="flex justify-between text-gray-600"><span>Delivery Fee</span><span>{shipping === 0 ? "FREE" : money(shipping)}</span></div>
-            <div className="flex justify-between font-bold text-base pt-2 text-[var(--ink)] border-t border-[var(--line)]">
-              <span>Amount Payable</span>
-              <span className="text-[var(--mustard-deep)]">{money(total)}</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid var(--line)", paddingTop: "14px", fontSize: "13px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Subtotal:</span>
+              <span>{money(subtotal)}</span>
             </div>
-          </div>
-
-          <button
-            disabled={!formValid || items.length === 0}
-            onClick={handleStartPayment}
-            className="yd-btn yd-btn-primary w-full py-4 mt-5 disabled:opacity-40 text-sm font-bold shadow-lg flex items-center justify-center gap-2"
-          >
-            <Lock size={15} />
-            Pay {money(total)} Now
-          </button>
-          
-          {!formValid && (
-            <p className="text-[11px] text-red-600 font-medium text-center mt-2">
-              Please fill all required delivery details (*).
-            </p>
-          )}
-
-          <div className="mt-4 flex items-center justify-center gap-2 opacity-60 text-[10px] font-mono">
-            <ShieldCheck size={14} /> Razorpay Verified Merchant
+            <div style={{ display: "flex", justifyContent: "space-between" }}>
+              <span>Atelier Shipping:</span>
+              <span>{shipping === 0 ? "FREE" : money(shipping)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--line)" }}>
+              <span>Grand Total:</span>
+              <span style={{ color: "var(--mustard-deep)" }}>{money(total)}</span>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* 3D-Secure Bank OTP Modal */}
-      {showOtpModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6 shadow-2xl border border-gray-300 relative">
-            <div className="flex items-center justify-between border-b pb-3 mb-4">
-              <div className="flex items-center gap-2">
-                <ShieldCheck size={20} className="text-blue-600" />
-                <span className="font-bold text-sm">3D-Secure Bank Authorization</span>
-              </div>
-              <span className="text-[10px] font-mono bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded">RAZORPAY</span>
-            </div>
-
-            <p className="text-xs text-gray-600 mb-4">
-              A 6-digit OTP has been sent to your registered mobile number for authorizing payment of <strong className="text-black">{money(total)}</strong>.
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <label className="text-[11px] font-mono uppercase text-gray-500 block mb-1">Enter OTP (Test OTP: 123456)</label>
-                <input
-                  type="text"
-                  maxLength={6}
-                  value={otp}
-                  onChange={(e) => setOtp(e.target.value)}
-                  className="w-full border-2 border-blue-500 rounded px-3 py-2 text-center font-mono text-lg font-bold tracking-widest outline-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-xs text-gray-500 font-mono">
-                <span>Resend OTP in 0:{otpTimer < 10 ? `0${otpTimer}` : otpTimer}</span>
-                <button
-                  type="button"
-                  onClick={() => setOtpTimer(30)}
-                  className="text-blue-600 hover:underline flex items-center gap-1"
-                >
-                  <RefreshCw size={12} /> Resend
-                </button>
-              </div>
-
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowOtpModal(false)}
-                  className="yd-btn yd-btn-outline flex-1 py-2.5 text-xs"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={handleVerifyOtpAndPay}
-                  className="yd-btn yd-btn-primary flex-1 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Authorize Payment
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Processing Loader Overlay */}
-      {isProcessing && (
-        <div className="fixed inset-0 z-[110] bg-black/75 backdrop-blur-sm flex flex-col items-center justify-center text-white p-4">
-          <div className="w-16 h-16 border-4 border-[var(--mustard)] border-t-transparent rounded-full animate-spin mb-4" />
-          <h3 className="font-display text-xl font-semibold">Processing Razorpay Payment…</h3>
-          <p className="text-xs font-mono opacity-70 mt-1">Verifying bank authorization &amp; allocating inventory.</p>
-        </div>
-      )}
     </div>
   );
 }
 
-/* ------------------------------ ORDER CONFIRMATION & TAX INVOICE ---------------------------- */
-export function ConfirmationPage({ order, setPage }) {
-  const [showInvoice, setShowInvoice] = useState(false);
-  if (!order) return null;
+/* ----------------------------- RAZORPAY GATEWAY MODAL ----------------------------- */
+export function RazorpayGatewayModal({
+  orderDraft,
+  onSuccess,
+  onCancel
+}) {
+  const [step, setStep] = useState("qr"); // 'qr' | 'card' | 'otp'
+  const [otp, setOtp] = useState("123456");
+  const [isProcessing, setIsProcessing] = useState(false);
 
-  const cloudConfig = loadCloudConfig();
-  const waUrl = generateWhatsAppOrderUrl(order, cloudConfig?.whatsappNumber);
+  if (!orderDraft) return null;
+
+  const handleSimulatePayment = () => {
+    setIsProcessing(true);
+    setTimeout(() => {
+      setIsProcessing(false);
+      const txId = `pay_rzp_${Date.now().toString().slice(-8)}`;
+      onSuccess(txId);
+    }, 1500);
+  };
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-16 text-center">
-      <AnimatedSwingTag size={72} />
-      <h1 className="font-display text-3xl mb-2 mt-4 font-semibold">Order Confirmed!</h1>
-      <p className="opacity-70 text-sm mb-6">
-        Thank you for shopping with Yashal Dresses. Order <span className="font-mono font-bold text-black">{order.id}</span> has been tagged and dispatched.
-      </p>
+    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", backdropFilter: "blur(4px)" }}>
+      <div style={{ background: "#ffffff", width: "100%", maxWidth: "460px", borderRadius: "12px", overflow: "hidden", boxShadow: "0 25px 60px rgba(0,0,0,0.5)", border: "1px solid #e0e0e0" }}>
+        {/* Razorpay Brand Header */}
+        <div style={{ background: "#0c2340", padding: "18px 24px", color: "#ffffff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div>
+            <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", color: "#60a5fa", fontWeight: "bold" }}>
+              SECURED BY RAZORPAY
+            </div>
+            <div style={{ fontSize: "16px", fontWeight: "bold", marginTop: "2px" }}>
+              Yashal Dresses Atelier
+            </div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Payable Amount</div>
+            <div style={{ fontSize: "18px", fontWeight: "bold", color: "#facc15" }}>
+              {money(orderDraft.total)}
+            </div>
+          </div>
+        </div>
 
-      <div className="tag-card p-5 text-left mb-4 bg-white">
-        <div className="flex justify-between text-xs mb-1.5 border-b pb-2">
-          <span className="opacity-60 font-mono">Transaction Ref</span>
-          <span className="font-mono font-semibold text-emerald-700">{order.transactionId || order.id}</span>
-        </div>
-        <div className="flex justify-between text-xs mb-1">
-          <span className="opacity-60">Payment Mode</span>
-          <span className="font-medium">{order.paymentMethod}</span>
-        </div>
-        <div className="flex justify-between text-xs mb-1">
-          <span className="opacity-60">Customer</span>
-          <span className="font-medium">{order.address?.name} (📞 {order.address?.phone})</span>
-        </div>
-        <div className="flex justify-between text-xs mb-1">
-          <span className="opacity-60">Total Paid</span>
-          <span className="font-semibold text-sm text-[var(--mustard-deep)]">{money(order.total)}</span>
-        </div>
-        <div className="flex justify-between text-xs pt-1 border-t">
-          <span className="opacity-60">Delivery Address</span>
-          <span className="text-right">{order.address?.line1}, {order.address?.city} - {order.address?.pincode}</span>
+        <div style={{ padding: "24px" }}>
+          {step === "qr" && (
+            <div style={{ textAlign: "center" }}>
+              <p style={{ fontSize: "13px", color: "#475569", margin: "0 0 16px 0" }}>
+                Scan this dynamic QR code with <strong>Google Pay, PhonePe, Paytm, or BHIM</strong>
+              </p>
+
+              {/* Dynamic QR Box */}
+              <div style={{ width: "180px", height: "180px", margin: "0 auto 20px auto", background: "#f8fafc", border: "2px dashed #0284c7", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "12px" }}>
+                <QrCode size={110} color="#0c2340" />
+                <span style={{ fontSize: "10px", fontFamily: "IBM Plex Mono", color: "#0284c7", marginTop: "8px", fontWeight: "bold" }}>
+                  UPI ID: yashaldresses@icici
+                </span>
+              </div>
+
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                <button
+                  onClick={handleSimulatePayment}
+                  disabled={isProcessing}
+                  style={{ width: "100%", padding: "12px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
+                >
+                  {isProcessing ? "Verifying UPI Transaction..." : `Approve & Pay ${money(orderDraft.total)}`}
+                </button>
+
+                <button
+                  onClick={() => setStep("otp")}
+                  style={{ background: "none", border: "none", color: "#64748b", fontSize: "12px", cursor: "pointer", textDecoration: "underline" }}
+                >
+                  Or enter Netbanking 3D Secure OTP
+                </button>
+              </div>
+            </div>
+          )}
+
+          {step === "otp" && (
+            <div>
+              <p style={{ fontSize: "13px", color: "#475569", margin: "0 0 14px 0" }}>
+                Enter the 6-digit Bank OTP sent to <strong>+91 {orderDraft.customer?.phone}</strong>
+              </p>
+              <input
+                type="text"
+                maxLength={6}
+                value={otp}
+                onChange={e => setOtp(e.target.value)}
+                style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: "20px", letterSpacing: "8px", fontWeight: "bold", border: "2px solid #0284c7", borderRadius: "6px", marginBottom: "16px" }}
+              />
+
+              <button
+                onClick={handleSimulatePayment}
+                disabled={isProcessing}
+                style={{ width: "100%", padding: "12px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
+              >
+                {isProcessing ? "Authorizing 3D Secure..." : "Authorize & Complete Order"}
+              </button>
+            </div>
+          )}
+
+          <div style={{ marginTop: "16px", textAlign: "center" }}>
+            <button
+              onClick={onCancel}
+              style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
+            >
+              Cancel Payment & Return
+            </button>
+          </div>
         </div>
       </div>
+    </div>
+  );
+}
 
-      {/* Direct WhatsApp Alert Action */}
-      <a
-        href={waUrl}
-        target="_blank"
-        rel="noopener noreferrer"
-        className="yd-btn flex items-center justify-center gap-2 w-full py-4 text-xs font-bold shadow-lg transition-all transform hover:scale-[1.01] active:scale-98 mb-3"
-        style={{ background: "#25D366", color: "#FFFFFF", borderRadius: "8px" }}
-      >
-        <Send size={15} />
-        <span>Send Order Details to Store via WhatsApp →</span>
-      </a>
+/* ----------------------------- CONFIRMATION PAGE & TAX INVOICE ----------------------------- */
+export function ConfirmationPage({
+  order,
+  setPage,
+  onSendEmailConfirmation
+}) {
+  const [emailStatus, setEmailStatus] = useState("");
 
-      {/* Automated Email Confirmation Banner */}
-      <div className="bg-emerald-50 border border-emerald-300 rounded-lg p-3.5 text-left space-y-1.5 shadow-sm max-w-lg mx-auto mb-6">
-        <div className="flex items-center gap-1.5 text-emerald-900 font-bold text-xs">
-          <span>✉️</span>
-          <span>Automated Order Confirmation Email</span>
+  if (!order) return null;
+
+  const handlePrint = () => {
+    window.print();
+  };
+
+  const handleSendEmail = async () => {
+    setEmailStatus("Dispatching digital invoice...");
+    const res = await onSendEmailConfirmation(order);
+    if (res?.success) {
+      setEmailStatus("✓ Digital invoice sent to patron & store manager!");
+    } else {
+      setEmailStatus("Email dispatch triggered via Google Apps Script.");
+    }
+  };
+
+  return (
+    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 16px" }}>
+      {/* Top Banner */}
+      <div style={{ textAlign: "center", marginBottom: "32px" }}>
+        <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--ink)", color: "var(--mustard)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto" }}>
+          <CheckCircle2 size={36} />
         </div>
-        <p className="text-[11px] text-emerald-800 leading-snug">
-          An order confirmation mail with subject <b className="font-mono text-purple-900">"Order Confirmed!"</b> has been routed from <b>dressesyashal@gmail.com</b> to <b>yashaldressespune@gmail.com</b>.
+        <p style={{ fontFamily: "IBM Plex Mono", fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase", color: "var(--mustard-deep)" }}>
+          TRANSACTION VERIFIED & CONFIRMED
         </p>
-        <div className="pt-1">
-          <a
-            href={generateOrderMailtoUrl(order)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-[11px] font-mono font-bold text-emerald-900 hover:text-black underline inline-flex items-center gap-1"
-          >
-            <span>✉️ View / Send Order Email in Mail App →</span>
-          </a>
+        <h1 className="font-display" style={{ margin: "4px 0", fontSize: "28px", color: "var(--ink)" }}>
+          Order Confirmed, Ref #{order.id}
+        </h1>
+        <p style={{ fontSize: "14px", color: "var(--ink-soft)" }}>
+          Thank you, <strong>{order.customer?.name}</strong>. Your bespoke menswear order is being tailored for dispatch.
+        </p>
+      </div>
+
+      {/* Printable Tax Invoice Card */}
+      <div id="printable-tax-invoice" style={{ background: "var(--ivory)", border: "2px solid var(--line)", borderRadius: "10px", padding: "32px", boxShadow: "0 8px 24px rgba(0,0,0,0.04)", marginBottom: "28px" }}>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--line)", paddingBottom: "20px", marginBottom: "20px" }}>
+          <div>
+            <h2 className="font-display" style={{ margin: 0, fontSize: "22px", color: "var(--ink)" }}>
+              YASHAL DRESSES
+            </h2>
+            <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "var(--ink-soft)", lineHeight: "1.4" }}>
+              {STORE_CONTACT.address}<br />
+              Phone: {STORE_CONTACT.phone} | Email: {STORE_CONTACT.email}
+            </p>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <span style={{ fontSize: "11px", fontFamily: "IBM Plex Mono", background: "var(--ink)", color: "var(--mustard)", padding: "4px 8px", borderRadius: "4px" }}>
+              TAX INVOICE
+            </span>
+            <div style={{ fontSize: "12px", fontWeight: "bold", marginTop: "6px" }}>Invoice #{order.id}</div>
+            <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>{new Date(order.date).toLocaleDateString("en-IN")}</div>
+          </div>
+        </div>
+
+        {/* Customer & Payment Info */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px", fontSize: "12px", background: "var(--parchment)", padding: "16px", borderRadius: "6px" }}>
+          <div>
+            <strong>BILLED TO:</strong><br />
+            {order.customer?.name}<br />
+            {order.customer?.phone}<br />
+            {order.customer?.address}
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <strong>PAYMENT STATUS:</strong><br />
+            <span style={{ color: "#16a34a", fontWeight: "bold" }}>✓ {order.paymentMethod || "PAID"}</span><br />
+            Txn Ref: {order.transactionId || "N/A"}<br />
+            Delivery: 2 - 4 Business Days
+          </div>
+        </div>
+
+        {/* Items Table */}
+        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "20px" }}>
+          <thead>
+            <tr style={{ background: "rgba(26,18,36,0.06)", borderBottom: "1px solid var(--line)", textAlign: "left", fontFamily: "IBM Plex Mono", fontSize: "11px" }}>
+              <th style={{ padding: "10px" }}>Item Description</th>
+              <th style={{ padding: "10px", textAlign: "center" }}>Size</th>
+              <th style={{ padding: "10px", textAlign: "center" }}>Qty</th>
+              <th style={{ padding: "10px", textAlign: "right" }}>Rate</th>
+              <th style={{ padding: "10px", textAlign: "right" }}>Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            {order.items?.map((it, idx) => (
+              <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
+                <td style={{ padding: "10px" }}>
+                  <strong>{it.name}</strong><br />
+                  <span style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Label: {it.brand || "Yashal"}</span>
+                </td>
+                <td style={{ padding: "10px", textAlign: "center" }}>{it.size}</td>
+                <td style={{ padding: "10px", textAlign: "center" }}>{it.quantity}</td>
+                <td style={{ padding: "10px", textAlign: "right" }}>{money(it.price)}</td>
+                <td style={{ padding: "10px", textAlign: "right", fontWeight: "600" }}>{money(it.price * it.quantity)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Grand Total */}
+        <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "2px solid var(--line)", paddingTop: "14px" }}>
+          <div style={{ width: "240px", fontSize: "13px" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>Subtotal:</span>
+              <span>{money(order.subtotal || order.total)}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span>Shipping:</span>
+              <span>{order.shipping ? money(order.shipping) : "FREE"}</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold", borderTop: "1px solid var(--line)", paddingTop: "8px", marginTop: "8px" }}>
+              <span>Total Paid:</span>
+              <span style={{ color: "var(--mustard-deep)" }}>{money(order.total)}</span>
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-3 justify-center">
+      {/* Action Buttons */}
+      <div style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
         <button
-          onClick={() => setShowInvoice(true)}
-          className="yd-btn border border-[var(--ink)] bg-white px-5 py-3 text-xs flex items-center gap-2 shadow hover:bg-gray-50"
+          onClick={handlePrint}
+          className="yd-btn"
+          style={{ padding: "12px 20px", background: "var(--ink)", color: "var(--ivory)", display: "flex", alignItems: "center", gap: "8px" }}
         >
-          <FileText size={15} /> Print Tax Invoice
+          <Printer size={16} color="var(--mustard)" /> Print Tax Invoice
         </button>
-        <button onClick={() => setPage("orders")} className="yd-btn yd-btn-primary px-6 py-3 text-xs">
-          Track Order Status
+
+        <button
+          onClick={handleSendEmail}
+          className="yd-btn"
+          style={{ padding: "12px 20px", background: "var(--mustard)", color: "var(--ink)", border: "none", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <Send size={16} /> Send Email Copy
         </button>
-        <button onClick={() => setPage("shop")} className="yd-btn yd-btn-outline px-6 py-3 text-xs">
+
+        <button
+          onClick={() => setPage("shop")}
+          className="yd-btn"
+          style={{ padding: "12px 20px", background: "transparent", border: "1px solid var(--line)", color: "var(--ink)" }}
+        >
           Continue Shopping
         </button>
       </div>
 
-      {/* Tax Invoice Modal */}
-      {showInvoice && (
-        <div className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white text-gray-900 rounded-lg max-w-2xl w-full p-8 shadow-2xl relative border-4 border-double border-[var(--ink)] text-left">
-            <button
-              onClick={() => setShowInvoice(false)}
-              className="absolute top-4 right-4 text-gray-500 hover:text-black font-bold"
-            >
-              ✕ Close
-            </button>
-
-            {/* Invoice Header */}
-            <div className="flex justify-between items-start border-b-2 border-gray-800 pb-4 mb-6">
-              <div>
-                <h2 className="font-display text-2xl font-bold tracking-tight text-gray-900">YASHAL DRESSES</h2>
-                <p className="text-xs font-mono text-gray-600">Official Tax Invoice &amp; Goods Receipt</p>
-                <p className="text-xs text-gray-500">EST. Workroom № 12, Pune, Maharashtra</p>
-                <p className="text-xs text-gray-500">GSTIN: 27AABCY1234F1Z9</p>
-              </div>
-              <div className="text-right">
-                <span className="font-mono text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1 rounded inline-block">
-                  TAX INVOICE
-                </span>
-                <p className="text-xs font-mono mt-2">Invoice #: {order.id}</p>
-                <p className="text-xs text-gray-500">Date: {order.date}</p>
-              </div>
-            </div>
-
-            {/* Address */}
-            <div className="grid grid-cols-2 gap-4 text-xs mb-6 bg-gray-50 p-3 rounded border">
-              <div>
-                <p className="font-bold text-gray-700 uppercase">Billed To:</p>
-                <p className="font-medium text-gray-900">{order.address?.name}</p>
-                <p>{order.address?.line1}</p>
-                <p>{order.address?.city}, {order.address?.state} - {order.address?.pincode}</p>
-                <p>Phone: {order.address?.phone}</p>
-              </div>
-              <div>
-                <p className="font-bold text-gray-700 uppercase">Payment Details:</p>
-                <p>Method: {order.paymentMethod}</p>
-                <p className="font-mono">Ref: {order.transactionId || order.id}</p>
-                <p className="text-emerald-700 font-semibold mt-1">Status: Paid &amp; Verified ✓</p>
-              </div>
-            </div>
-
-            {/* Line Items Table */}
-            <table className="w-full text-xs text-left border-collapse mb-6">
-              <thead>
-                <tr className="border-b-2 border-gray-800 bg-gray-100 font-mono">
-                  <th className="py-2 px-2">Item Description</th>
-                  <th className="py-2 px-2">Size</th>
-                  <th className="py-2 px-2 text-center">Qty</th>
-                  <th className="py-2 px-2 text-right">Price</th>
-                  <th className="py-2 px-2 text-right">Amount</th>
-                </tr>
-              </thead>
-              <tbody>
-                {order.items.map((i, idx) => (
-                  <tr key={idx} className="border-b border-gray-200">
-                    <td className="py-2.5 px-2 font-medium">{i.name || `Garment Item (${i.id})`}</td>
-                    <td className="py-2.5 px-2 font-mono">{i.size}</td>
-                    <td className="py-2.5 px-2 text-center">{i.qty}</td>
-                    <td className="py-2.5 px-2 text-right">{money(i.price || 0)}</td>
-                    <td className="py-2.5 px-2 text-right font-semibold">{money((i.price || 0) * i.qty)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-
-            {/* Totals */}
-            <div className="flex justify-end text-xs mb-6">
-              <div className="w-64 space-y-1">
-                <div className="flex justify-between"><span>Subtotal:</span><span>{money(Math.round(order.total * 0.95))}</span></div>
-                <div className="flex justify-between"><span>CGST (2.5%):</span><span>{money(Math.round(order.total * 0.025))}</span></div>
-                <div className="flex justify-between"><span>SGST (2.5%):</span><span>{money(Math.round(order.total * 0.025))}</span></div>
-                <div className="flex justify-between font-bold text-sm border-t-2 border-gray-900 pt-2">
-                  <span>Grand Total:</span>
-                  <span>{money(order.total)}</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Print Action */}
-            <div className="flex justify-between items-center border-t pt-4">
-              <p className="text-[10px] text-gray-500">This is a computer-generated invoice and requires no signature.</p>
-              <button
-                onClick={() => window.print()}
-                className="yd-btn yd-btn-primary px-4 py-2 text-xs flex items-center gap-1"
-              >
-                <Download size={14} /> Print / Save PDF
-              </button>
-            </div>
-          </div>
-        </div>
+      {emailStatus && (
+        <p style={{ textAlign: "center", fontSize: "12px", color: "var(--mustard-deep)", marginTop: "16px", fontWeight: "600" }}>
+          {emailStatus}
+        </p>
       )}
     </div>
   );
 }
+
+export default CheckoutPage;

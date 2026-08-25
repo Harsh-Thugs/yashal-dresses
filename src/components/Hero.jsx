@@ -1,7 +1,7 @@
 import React from "react";
 import { PaisleyBackground, SparkleField, Peacock, Swatch, GoldenAtelierDust } from "./BrandDecorations";
 
-export default function Hero({ setPage, setActiveCategory, products }) {
+export default function Hero({ setPage = () => {}, setActiveCategory = () => {}, products = [] }) {
   const featuredCategories = ["Formal Shirts", "Kurta Pyjamas", "Cotton Pants", "Formal T-Shirts"];
 
   return (
@@ -41,7 +41,9 @@ export default function Hero({ setPage, setActiveCategory, products }) {
 
         <div className="md:col-span-2 grid grid-cols-2 gap-3">
           {featuredCategories.map((cat, i) => {
-            const p = products.find((x) => x.category === cat) || products[i % products.length];
+            const p = (products && products.length > 0)
+              ? (products.find((x) => x.category === cat) || products[i % products.length])
+              : { name: cat, category: cat };
             return (
               <button
                 key={cat}

@@ -8,7 +8,7 @@ const LOOKS = [
   { title: "Smart Layer", items: ["Monte Carlo Premium Fleece Crewneck Sweatshirt", "Live in Ultra-Soft Chino Cotton Pants"] },
 ];
 
-export default function Lookbook({ products, onOpen }) {
+export default function Lookbook({ products = [], onOpen = () => {}, setPage = () => {} }) {
   const [ref, inView] = useReveal();
 
   return (
@@ -21,14 +21,16 @@ export default function Lookbook({ products, onOpen }) {
       </div>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {LOOKS.map((look) => {
-          const items = look.items.map((n) => products.find((p) => p.name === n)).filter(Boolean);
+          const items = look.items
+            .map((n) => (products && products.length > 0 ? products.find((p) => p.name === n) : null))
+            .filter(Boolean);
           return (
             <div key={look.title} className="tag-card p-4">
               <div className="tag-hole" />
               <div className="relative h-40 mb-3">
                 {items.map((p, i) => (
                   <div
-                    key={p.id}
+                    key={p.id || i}
                     className="absolute rounded-lg overflow-hidden shadow-lg border border-[var(--line)]"
                     style={{
                       width: 76, height: 76,

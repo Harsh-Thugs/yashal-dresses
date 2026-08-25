@@ -103,14 +103,101 @@ export async function compressImage(file, maxWidth = 1200, quality = 0.85) {
 }
 
 /**
- * Uploads a garment photo to Firebase Storage with progress tracking.
- * Falls back to Base64 data URL if Firebase is not connected.
+ * Uploads an image to Cloudinary (100% Free Tier, Zero Card).
+ */
+export async function uploadToCloudinary(file, onProgress = null) {
+  const cloudName = (import.meta.env?.VITE_CLOUDINARY_CLOUD_NAME || (typeof localStorage !== 'undefined' ? localStorage.getItem('yd_cloudinary_cloud_name') : '') || "").trim();
+  const uploadPreset = (import.meta.env?.VITE_CLOUDINARY_UPLOAD_PRESET || (typeof localStorage !== 'undefined' ? localStorage.getItem('yd_cloudinary_preset') : '') || "").trim();
+
+  if (!cloudName || !uploadPreset) return null;
+
+  const processed = await compressImage(file, 1200, 0.85);
+  const formData = new FormData();
+  formData.append("file", processed);
+  formData.append("upload_preset", uploadPreset);
+
+  if (onProgress) onProgress(40);
+
+  const res = await fetch(`https://api.cloudinary.com/v1_1/${cloudName}/image/upload`, {
+    method: "POST",
+    body: formData
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData?.error?.message || `Cloudinary HTTP error ${res.status}`);
+  }
+
+  const data = await res.json();
+  if (onProgress) onProgress(100);
+
+  return {
+    url: data.secure_url,
+    isCloud: true,
+    message: "Uploaded successfully to Cloudinary CDN!"
+  };
+}
+
+/**
+ * Uploads a garment photo (Cloudinary -> Firebase Storage -> Compressed Local Fallback).
  */
 export async function uploadGarmentPhoto(file, garmentId, onProgress = null) {
-  const { storage, isLive } = getFirebaseInstance();
+  // 1. Try Cloudinary first (100% Free, Zero Card)
+  try {
+    const cloudinaryRes = await uploadToCloudinary(file, onProgress);
+    if (cloudinaryRes && cloudinaryRes.url) {
+      return cloudinaryRes;
+    }
+  } catch (err) {
+    console.warn("Cloudinary upload failed, falling back:", err);
+  }
 
-  // If Firebase is not configured, fall back to Base64 locally
-  if (!isLive || !storage) {
+  // 2. Try Firebase Storage if configured
+  const { storage, isLive } = getFirebaseInstance();
+  if (isLive && storage) {
+    try {
+      const processedFile = await compressImage(file, 1200, 0.85);
+      const cleanId = (garmentId || "garment").replace(/[^a-zA-Z0-9_-]/g, "");
+      const filename = `garments/${cleanId}_${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
+      const storageRef = ref(storage, filename);
+
+      const uploadTask = uploadBytesResumable(storageRef, processedFile, {
+        contentType: processedFile.type || "image/jpeg",
+        customMetadata: { garmentId: cleanId }
+      });
+
+      const fbRes = await new Promise((resolve, reject) => {
+        uploadTask.on(
+          "state_changed",
+          (snapshot) => {
+            const progress = Math.round(
+              (snapshot.bytesTransferred / snapshot.totalBytes) * 100
+            );
+            if (onProgress) onProgress(progress);
+          },
+          (error) => {
+            console.warn("Firebase Storage error:", error);
+            reject(error);
+          },
+          async () => {
+            const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+            resolve({
+              url: downloadUrl,
+              isCloud: true,
+              message: "Uploaded successfully to Firebase Cloud Storage!"
+            });
+          }
+        );
+      });
+      if (fbRes && fbRes.url) return fbRes;
+    } catch (err) {
+      console.warn("Firebase Storage failed, falling back to local compressed data:", err);
+    }
+  }
+
+  // 3. Fallback to lightweight compressed Base64 inline
+  try {
+    const processed = await compressImage(file, 900, 0.78);
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -118,63 +205,17 @@ export async function uploadGarmentPhoto(file, garmentId, onProgress = null) {
         resolve({
           url: reader.result,
           isCloud: false,
-          message: "Saved locally (Connect Firebase in Merchant Settings for Cloud CDN sync)"
+          message: "Optimized & saved (Add Cloudinary keys to .env for Cloud CDN)"
         });
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(processed);
     });
-  }
-
-  try {
-    // Compress image client side first
-    const processedFile = await compressImage(file);
-    const cleanId = (garmentId || "garment").replace(/[^a-zA-Z0-9_-]/g, "");
-    const filename = `garments/${cleanId}_${Date.now()}_${file.name.replace(/\s+/g, "_")}`;
-    const storageRef = ref(storage, filename);
-
-    const uploadTask = uploadBytesResumable(storageRef, processedFile, {
-      contentType: processedFile.type || "image/jpeg",
-      customMetadata: { garmentId: cleanId }
-    });
-
-    return new Promise((resolve, reject) => {
-      uploadTask.on(
-        "state_changed",
-        (snapshot) => {
-          const progress = Math.round(
-            (snapshot.bytesTransferred / snapshot.totalBytes) * 100
-          );
-          if (onProgress) onProgress(progress);
-        },
-        (error) => {
-          console.error("Firebase Storage upload error:", error);
-          // Fallback to local Base64 on upload error
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            resolve({
-              url: reader.result,
-              isCloud: false,
-              message: "Cloud upload error, saved locally as fallback: " + error.message
-            });
-          };
-          reader.readAsDataURL(file);
-        },
-        async () => {
-          const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
-          resolve({
-            url: downloadUrl,
-            isCloud: true,
-            message: "Uploaded successfully to Firebase Cloud Storage!"
-          });
-        }
-      );
-    });
-  } catch (err) {
-    console.error("Upload handler exception:", err);
+  } catch (e) {
     return new Promise((resolve) => {
       const reader = new FileReader();
       reader.onloadend = () => {
-        resolve({ url: reader.result, isCloud: false, message: err.message });
+        if (onProgress) onProgress(100);
+        resolve({ url: reader.result, isCloud: false, message: "Saved locally" });
       };
       reader.readAsDataURL(file);
     });
@@ -384,5 +425,47 @@ export async function seedFirestoreCatalog(db) {
     console.log("Firestore catalog successfully populated with initial boutique garments.");
   } catch (err) {
     console.error("Error seeding initial data to Firestore:", err);
+  }
+}
+
+/**
+ * Direct Cloudinary CDN Upload helper alias
+ */
+export async function uploadToCloudinaryCDN(file, onProgress = null) {
+  return uploadGarmentPhoto(file, `garment_${Date.now()}`, onProgress);
+}
+
+/**
+ * Sends order confirmation email via Google Apps Script Webhook
+ */
+export async function sendOrderConfirmationEmail(order) {
+  const webhookUrl = (typeof localStorage !== 'undefined' ? localStorage.getItem('yd_email_webhook_url') : '') || '';
+  if (!webhookUrl) return { success: false, reason: 'No webhook configured' };
+  try {
+    const payload = {
+      orderId: order.id,
+      customerName: order.customer?.name || 'Valued Patron',
+      customerEmail: order.customer?.email,
+      customerPhone: order.customer?.phone || 'N/A',
+      deliveryAddress: order.customer?.address || 'N/A',
+      grandTotal: `₹${(order.total || 0).toLocaleString('en-IN')}`,
+      paymentMethod: order.paymentMethod || 'Paid',
+      items: (order.items || []).map(i => ({
+        name: i.name,
+        brand: i.brand,
+        size: i.size,
+        quantity: i.quantity,
+        price: i.price
+      }))
+    };
+    await fetch(webhookUrl, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
   }
 }

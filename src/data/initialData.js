@@ -174,6 +174,7 @@ export const INITIAL_PRODUCTS = RAW.map((r, i) => {
     mrp,
     c1, c2,
     image: null,
+    images: [],
     sizes,
     stock,
     inStock: !isOutOfStockDemo && totalStockCount > 0,
@@ -186,3 +187,144 @@ export const INITIAL_PRODUCTS = RAW.map((r, i) => {
   };
 });
 
+export const INITIAL_ORDERS = [
+  {
+    id: "ORD-98421",
+    date: "2026-08-25T14:32:00",
+    customer: {
+      name: "Harshvardhan Shinde",
+      phone: "9822019283",
+      email: "harsh.shinde@example.com",
+      address: "Bungalow No. 4, Model Colony, Pune - 411016",
+    },
+    items: [
+      {
+        id: "YD-142",
+        name: "Velmore Royal Jacquard Kurta Pyjama Set",
+        size: "L",
+        quantity: 1,
+        price: 2999,
+        brand: "Velmore",
+      }
+    ],
+    subtotal: 2999,
+    tax: 0,
+    shipping: 0,
+    total: 2999,
+    status: "Confirmed",
+    paymentMethod: "Razorpay / UPI",
+    paymentStatus: "Paid",
+    transactionId: "pay_Q7f1mN8xL9p2Zq",
+  }
+];
+
+export const STORE_CONTACT = {
+  name: "Yashal Dresses",
+  tagline: "Exclusive Menswear Studio & Ready-to-Wear Atelier",
+  address: "Shop No. 4 & 5, Heritage Plaza, F.C. Road, Shivajinagar, Pune, Maharashtra 411005",
+  phone: "+91 96735 33839",
+  email: "yashaldressespune@gmail.com",
+  senderEmail: "dressesyashal@gmail.com",
+  hours: "Monday - Sunday: 10:30 AM to 9:30 PM",
+  mapsUrl: "https://maps.google.com/?q=FC+Road+Shivajinagar+Pune+Yashal+Dresses",
+};
+
+export const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
+
+export const EMAIL_AUTOMATION_CONFIG = {
+  senderEmail: "dressesyashal@gmail.com",
+  storeEmail: "yashaldressespune@gmail.com",
+  scriptWebhookKey: "yd_email_webhook_url",
+  defaultWebhookUrl: "",
+};
+
+export const GOOGLE_APPS_SCRIPT_EMAIL_CODE = `/**
+ * Yashal Dresses - Automated Order Confirmation Email Webhook
+ * Set up instructions:
+ * 1. Open Google Sheets / Apps Script (script.google.com) under your 'dressesyashal@gmail.com' account.
+ * 2. Paste this code into Code.gs
+ * 3. Click 'Deploy' -> 'New deployment' -> Select type 'Web app'.
+ * 4. Set Execute as: "Me (dressesyashal@gmail.com)" and Who has access: "Anyone".
+ * 5. Copy the Web App URL and paste it in the Yashal Merchant Workroom under 'Email Automation'.
+ */
+
+function doPost(e) {
+  try {
+    var data = JSON.parse(e.postData.contents);
+    
+    var orderId = data.orderId || "ORD-" + Math.floor(10000 + Math.random() * 90000);
+    var customerName = data.customerName || "Valued Patron";
+    var customerEmail = data.customerEmail;
+    var customerPhone = data.customerPhone || "N/A";
+    var deliveryAddress = data.deliveryAddress || "Store Pickup / Not Provided";
+    var grandTotal = data.grandTotal || "₹0";
+    var paymentMethod = data.paymentMethod || "Online (Razorpay / UPI)";
+    var items = data.items || [];
+    
+    var itemsTableRows = "";
+    for (var i = 0; i < items.length; i++) {
+      var item = items[i];
+      itemsTableRows += '<tr style="border-bottom: 1px solid #eee;">' +
+        '<td style="padding: 10px; font-weight: bold; color: #1a1a1a;">' + item.name + '<br><span style="font-size: 11px; color: #888;">Brand: ' + (item.brand || 'Yashal') + ' | Size: ' + (item.size || 'Standard') + '</span></td>' +
+        '<td style="padding: 10px; text-align: center; color: #444;">' + item.quantity + '</td>' +
+        '<td style="padding: 10px; text-align: right; color: #b8860b; font-weight: bold;">₹' + Number(item.price * item.quantity).toLocaleString('en-IN') + '</td>' +
+      '</tr>';
+    }
+
+    var htmlBody = '<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; border: 1px solid #e0d0b0; border-radius: 8px; overflow: hidden; background-color: #faf9f6;">' +
+      '<div style="background-color: #12100e; padding: 24px; text-align: center; border-bottom: 2px solid #b8860b;">' +
+        '<h1 style="color: #d4af37; margin: 0; font-size: 24px; letter-spacing: 2px; text-transform: uppercase;">Yashal Dresses</h1>' +
+        '<p style="color: #e0d0b0; margin: 4px 0 0 0; font-size: 12px; letter-spacing: 1px;">HAUTE COUTURE & READY-TO-WEAR MENSWEAR</p>' +
+      '</div>' +
+      '<div style="padding: 24px; color: #2d2d2d;">' +
+        '<h2 style="color: #12100e; font-size: 18px; margin-top: 0;">Order Confirmed! Ref #' + orderId + '</h2>' +
+        '<p>Dear <strong>' + customerName + '</strong>,</p>' +
+        '<p>Thank you for choosing Yashal Dresses. Your bespoke garment order has been received and confirmed by our atelier.</p>' +
+        '<table style="width: 100%; border-collapse: collapse; margin: 20px 0; background-color: #ffffff; border-radius: 6px; overflow: hidden; border: 1px solid #eaeaea;">' +
+          '<thead style="background-color: #f5f0e6; color: #12100e; font-size: 12px; text-transform: uppercase;">' +
+            '<tr>' +
+              '<th style="padding: 10px; text-align: left;">Garment</th>' +
+              '<th style="padding: 10px; text-align: center;">Qty</th>' +
+              '<th style="padding: 10px; text-align: right;">Amount</th>' +
+            '</tr>' +
+          '</thead>' +
+          '<tbody>' + itemsTableRows + '</tbody>' +
+        '</table>' +
+        '<div style="text-align: right; margin-bottom: 20px; font-size: 16px;">' +
+          '<span>Grand Total: </span><strong style="color: #b8860b; font-size: 18px;">' + grandTotal + '</strong>' +
+        '</div>' +
+        '<div style="background-color: #f0ebe1; padding: 14px; border-radius: 6px; font-size: 12px; line-height: 1.6; margin-bottom: 20px;">' +
+          '<strong>Delivery & Customer Details:</strong><br>' +
+          'Patron: ' + customerName + ' (' + customerPhone + ')<br>' +
+          'Address: ' + deliveryAddress + '<br>' +
+          'Payment Status: ' + paymentMethod + ' (Verified)' +
+        '</div>' +
+        '<p style="font-size: 13px; color: #666; margin-bottom: 0;">For inquiries or sizing adjustments, reach us at <a href="tel:+919673533839" style="color: #b8860b;">+91 96735 33839</a> or visit our store at FC Road, Shivajinagar, Pune.</p>' +
+      '</div>' +
+      '<div style="background-color: #12100e; padding: 12px; text-align: center; font-size: 11px; color: #a09070;">' +
+        '© ' + new Date().getFullYear() + ' Yashal Dresses. All rights reserved.' +
+      '</div>' +
+    '</div>';
+
+    if (customerEmail) {
+      MailApp.sendEmail({
+        to: customerEmail,
+        subject: "Yashal Dresses - Order Confirmation & Invoice #" + orderId,
+        htmlBody: htmlBody,
+        replyTo: "yashaldressespune@gmail.com"
+      });
+    }
+
+    // Always send an internal notification to the store manager
+    MailApp.sendEmail({
+      to: "yashaldressespune@gmail.com",
+      subject: "🚨 NEW ORDER RECEIVED: #" + orderId + " (" + grandTotal + ") - " + customerName,
+      htmlBody: htmlBody,
+    });
+
+    return ContentService.createTextOutput(JSON.stringify({ status: "success", orderId: orderId })).setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService.createTextOutput(JSON.stringify({ status: "error", message: err.toString() })).setMimeType(ContentService.MimeType.JSON);
+  }
+}
+`;

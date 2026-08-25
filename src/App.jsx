@@ -1,562 +1,556 @@
-import React, { useState, useEffect } from "react";
-import { LogOut, Truck, RotateCcw, ShieldCheck } from "lucide-react";
-import BrandStyles from "./components/BrandStyles";
-import CurtainIntro from "./components/CurtainIntro";
-import Header from "./components/Header";
-import CategoryRail from "./components/CategoryRail";
-import Hero from "./components/Hero";
-import ProductCard from "./components/ProductCard";
-import FestiveBanner from "./components/FestiveBanner";
-import Lookbook from "./components/Lookbook";
-import ShopPage from "./components/ShopPage";
-import ProductPage from "./components/ProductPage";
-import CartDrawer from "./components/CartDrawer";
-import LoginModal from "./components/LoginModal";
-import CheckoutPage, { ConfirmationPage } from "./components/CheckoutModal";
-import OrdersPage from "./components/OrdersPage";
-import AdminDashboard from "./components/AdminDashboard";
-import Footer from "./components/Footer";
-import MobileNav from "./components/MobileNav";
-import InquiryModal from "./components/InquiryModal";
-import FloatingInquiryButton from "./components/FloatingInquiryButton";
+import React, { useState, useEffect, useMemo } from 'react';
+import BrandStyles from './components/BrandStyles';
+import CurtainIntro from './components/CurtainIntro';
+import Header from './components/Header';
+import Hero from './components/Hero';
+import FestiveBanner from './components/FestiveBanner';
+import CategoryRail from './components/CategoryRail';
+import ProductCard from './components/ProductCard';
+import ProductPage from './components/ProductPage';
+import Lookbook from './components/Lookbook';
+import ShopPage from './components/ShopPage';
+import CartDrawer from './components/CartDrawer';
+import { CheckoutPage, RazorpayGatewayModal, ConfirmationPage } from './components/CheckoutModal';
+import AdminDashboard from './components/AdminDashboard';
+import { LoginModal, MerchantLoginModal } from './components/LoginModal';
+import InquiryModal from './components/InquiryModal';
+import FloatingInquiryButton from './components/FloatingInquiryButton';
+import Footer from './components/Footer';
+import OrdersPage from './components/OrdersPage';
 
 import {
-  loadProducts, saveProducts as storageSaveProducts,
-  loadCategories, saveCategories as storageSaveCategories,
-  loadBrands, saveBrands as storageSaveBrands,
-  loadOrders, saveOrders as storageSaveOrders,
-  loadCart, saveCart as storageSaveCart,
-  loadWishlist, saveWishlist as storageSaveWishlist,
-  loadUser, saveUser as storageSaveUser,
-  deductStockForOrder
-} from "./utils/storage";
+  INITIAL_CATEGORIES,
+  INITIAL_BRANDS,
+  INITIAL_PRODUCTS,
+  INITIAL_ORDERS,
+  STORE_CONTACT,
+  money
+} from './data/initialData';
+
 import {
-  subscribeToLiveProducts,
-  subscribeToLiveCategories,
-  subscribeToLiveBrands,
-  subscribeToLiveOrders
-} from "./utils/firebase";
-import { sendOrderConfirmationEmail } from "./utils/emailSync.js";
+  getFirebaseInstance,
+  saveProductToFirestore,
+  deleteProductFromFirestore,
+  saveOrderToFirestore,
+  seedFirestoreCatalog,
+  sendOrderConfirmationEmail
+} from './utils/firebase';
 
-/* --------------------------------- HOME PAGE --------------------------------- */
-function HomePage({ setPage, setActiveCategory, onOpen, wishlist, toggleWish, products, categories, brands }) {
-  const bestsellers = products.filter((p) => p.tag === "Bestseller").slice(0, 4);
-  const fresh = products.filter((p) => p.tag === "New").slice(0, 4);
+import {
+  getActiveFirebaseConfig,
+  saveCustomFirebaseConfig,
+  isFirebaseConfigured
+} from './utils/firebaseConfig';
 
-  return (
-    <div>
-      <Hero setPage={setPage} setActiveCategory={setActiveCategory} products={products} />
+import { collection, onSnapshot } from 'firebase/firestore';
 
-      {/* Category / Segment Rail Section */}
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-14">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest yd-mustard">01 · SHOP BY SEGMENT</p>
-            <h2 className="font-display text-2xl md:text-3xl mt-1 font-semibold" style={{ color: "#8A5A3B" }}>
-              Every rack, tagged.
-            </h2>
-          </div>
-        </div>
-        <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-none snap-x snap-mandatory">
-          {categories.map((c) => {
-            const p = products.find((x) => x.category === c.name) || products[0];
-            return (
-              <button
-                key={c.name}
-                onClick={() => { setActiveCategory(c.name); setPage("shop"); }}
-                className="tag-card text-left shrink-0 w-32 snap-start group"
-              >
-                <div className="tag-hole" />
-                <div className="h-24 overflow-hidden relative">
-                  {p?.image ? (
-                    <img src={p.image} alt={c.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
-                  ) : (
-                    <div className="w-full h-full" style={{ background: `linear-gradient(155deg, ${p?.c1 || "#1B2A4A"}, ${p?.c2 || "#0D1830"})` }} />
-                  )}
-                </div>
-                <div className="tag-stitch px-2.5 py-2">
-                  <p className="text-[12.5px] leading-tight font-medium group-hover:text-[var(--mustard-deep)] transition-colors">{c.name}</p>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      </section>
-
-      {/* Bestsellers Section */}
-      <section className="max-w-7xl mx-auto px-4 md:px-6 pb-14">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest yd-mustard">02 · MOST WORN</p>
-            <h2 className="font-display text-2xl md:text-3xl mt-1 font-semibold">Bestsellers this month.</h2>
-          </div>
-          <button onClick={() => setPage("shop")} className="font-mono text-xs underline underline-offset-4 hidden sm:block">
-            View all garments →
-          </button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-          {bestsellers.map((p, i) => (
-            <ProductCard key={p.id} p={p} index={i} onOpen={onOpen} wishlist={wishlist} toggleWish={toggleWish} brands={brands} />
-          ))}
-        </div>
-      </section>
-
-      {/* Festive Banner */}
-      <FestiveBanner setPage={setPage} setActiveCategory={setActiveCategory} />
-
-      {/* Guarantees Bar */}
-      <section className="yd-ink-bg py-14">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 grid md:grid-cols-3 gap-8 text-center">
-          {[
-            { icon: Truck, title: "Free shipping ₹999+", d: "Delivered in 3–5 working days, pan-India." },
-            { icon: RotateCcw, title: "7-day easy returns", d: "Didn't fit right? Send it back, no questions." },
-            { icon: ShieldCheck, title: "Razorpay secure checkout", d: "Cards, UPI QR & Netbanking protected." },
-          ].map((f) => (
-            <div key={f.title} className="flex flex-col items-center gap-2">
-              <f.icon size={22} className="yd-mustard" />
-              <p className="text-sm font-medium">{f.title}</p>
-              <p className="text-xs text-white/60 max-w-[220px]">{f.d}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Fresh Arrivals Section */}
-      <section className="max-w-7xl mx-auto px-4 md:px-6 py-14">
-        <div className="flex items-end justify-between mb-6">
-          <div>
-            <p className="font-mono text-[11px] tracking-widest yd-mustard">03 · JUST IN</p>
-            <h2 className="font-display text-2xl md:text-3xl mt-1 font-semibold">Fresh off the rack.</h2>
-          </div>
-          <button onClick={() => setPage("shop")} className="font-mono text-xs underline underline-offset-4 hidden sm:block">
-            View all garments →
-          </button>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
-          {fresh.map((p, i) => (
-            <ProductCard key={p.id} p={p} index={i} onOpen={onOpen} wishlist={wishlist} toggleWish={toggleWish} brands={brands} />
-          ))}
-        </div>
-      </section>
-
-      {/* Lookbook Section */}
-      <Lookbook products={products} onOpen={onOpen} />
-    </div>
-  );
-}
-
-/* ----------------------------------- MAIN APP ---------------------------------- */
 export default function App() {
-  const [page, setPage] = useState("home");
-  const [isAdminMode, setIsAdminMode] = useState(false);
-  const [query, setQuery] = useState("");
+  // Page Routing: 'home' | 'shop' | 'product' | 'checkout' | 'confirmation' | 'admin' | 'orders'
+  const [page, setPage] = useState('home');
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
+  const [query, setQuery] = useState('');
 
-  // Persistent States
-  const [products, setProductsState] = useState(() => loadProducts());
-  const [categories, setCategoriesState] = useState(() => loadCategories());
-  const [brands, setBrandsState] = useState(() => loadBrands());
-  const [orders, setOrdersState] = useState(() => loadOrders());
-  const [cart, setCartState] = useState(() => loadCart());
-  const [wishlist, setWishlistState] = useState(() => loadWishlist());
-  const [user, setUserState] = useState(() => loadUser());
+  // Datasets
+  const [products, setProducts] = useState(() => {
+    const saved = localStorage.getItem('yd_products');
+    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
+  });
 
-  // UI Modal States
-  const [cartOpen, setCartOpen] = useState(false);
-  const [loginOpen, setLoginOpen] = useState(false);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
-  const [lastOrder, setLastOrder] = useState(null);
-  const [flights, setFlights] = useState([]);
-  const [showInquiryModal, setShowInquiryModal] = useState(false);
+  const [categories, setCategories] = useState(() => {
+    const saved = localStorage.getItem('yd_categories');
+    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
+  });
+
+  const [brands, setBrands] = useState(() => {
+    const saved = localStorage.getItem('yd_brands');
+    return saved ? JSON.parse(saved) : INITIAL_BRANDS;
+  });
+
+  const [orders, setOrders] = useState(() => {
+    const saved = localStorage.getItem('yd_orders');
+    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
+  });
+
+  // Cart & Wishlist
+  const [cart, setCart] = useState(() => {
+    const saved = localStorage.getItem('yd_cart');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [wishlist, setWishlist] = useState(() => {
+    const saved = localStorage.getItem('yd_wishlist');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [isCartOpen, setIsCartOpen] = useState(false);
+
+  // User & Auth
+  const [user, setUser] = useState(null);
+  const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
+  const [isMerchantLockOpen, setIsMerchantLockOpen] = useState(false);
+  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
+    return sessionStorage.getItem('yd_admin_unlocked') === 'true';
+  });
+
+  // Admin Modals & State
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [isProductModalOpen, setIsProductModalOpen] = useState(false);
+
+  // Inquiries
+  const [isInquiryOpen, setIsInquiryOpen] = useState(false);
   const [inquiryProduct, setInquiryProduct] = useState(null);
 
-  const handleOpenInquiry = (prod = null) => {
-    setInquiryProduct(prod);
-    setShowInquiryModal(true);
-  };
+  // Payment Gateway & Active Order Flow
+  const [paymentDraft, setPaymentDraft] = useState(null);
+  const [confirmedOrder, setConfirmedOrder] = useState(null);
 
-  // Real-time Cloud Synchronization (Firebase Firestore)
+  // Firebase Config State
+  const [firebaseConfig, setFirebaseConfig] = useState(() => getActiveFirebaseConfig());
+  const [isFirebaseLive, setIsFirebaseLive] = useState(false);
+
+  // Persist local changes to localStorage
+  useEffect(() => { localStorage.setItem('yd_products', JSON.stringify(products)); }, [products]);
+  useEffect(() => { localStorage.setItem('yd_categories', JSON.stringify(categories)); }, [categories]);
+  useEffect(() => { localStorage.setItem('yd_brands', JSON.stringify(brands)); }, [brands]);
+  useEffect(() => { localStorage.setItem('yd_orders', JSON.stringify(orders)); }, [orders]);
+  useEffect(() => { localStorage.setItem('yd_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { localStorage.setItem('yd_wishlist', JSON.stringify(wishlist)); }, [wishlist]);
+
+  // Realtime Firebase Firestore Listeners
   useEffect(() => {
-    const unsubProducts = subscribeToLiveProducts((liveProds) => {
-      if (liveProds && liveProds.length) {
-        setProductsState(liveProds);
-        storageSaveProducts(liveProds, false);
-      }
-    });
+    const { db, isLive } = getFirebaseInstance();
+    setIsFirebaseLive(isLive);
+    if (!isLive || !db) return;
 
-    const unsubCategories = subscribeToLiveCategories((liveCats) => {
-      if (liveCats && liveCats.length) {
-        setCategoriesState(liveCats);
-        storageSaveCategories(liveCats, false);
+    // Listen to Products
+    const unsubProds = onSnapshot(collection(db, 'yd_products'), (snap) => {
+      if (!snap.empty) {
+        const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setProducts(loaded);
       }
-    });
+    }, (err) => console.warn('Firestore products listener:', err));
 
-    const unsubBrands = subscribeToLiveBrands((liveBrands) => {
-      if (liveBrands && liveBrands.length) {
-        setBrandsState(liveBrands);
-        storageSaveBrands(liveBrands);
+    // Listen to Categories
+    const unsubCats = onSnapshot(collection(db, 'yd_categories'), (snap) => {
+      if (!snap.empty) {
+        const loaded = snap.docs.map(d => ({ ...d.data() }));
+        setCategories(loaded);
       }
-    });
+    }, (err) => console.warn('Firestore categories listener:', err));
 
-    const unsubOrders = subscribeToLiveOrders((liveOrders) => {
-      if (liveOrders && liveOrders.length) {
-        setOrdersState(liveOrders);
-        storageSaveOrders(liveOrders, false);
+    // Listen to Brands
+    const unsubBrands = onSnapshot(collection(db, 'yd_brands'), (snap) => {
+      if (!snap.empty) {
+        const loaded = snap.docs.map(d => ({ ...d.data() }));
+        setBrands(loaded);
       }
-    });
+    }, (err) => console.warn('Firestore brands listener:', err));
+
+    // Listen to Orders
+    const unsubOrders = onSnapshot(collection(db, 'yd_orders'), (snap) => {
+      if (!snap.empty) {
+        const loaded = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        setOrders(loaded);
+      }
+    }, (err) => console.warn('Firestore orders listener:', err));
 
     return () => {
-      if (typeof unsubProducts === 'function') unsubProducts();
-      if (typeof unsubCategories === 'function') unsubCategories();
-      if (typeof unsubBrands === 'function') unsubBrands();
-      if (typeof unsubOrders === 'function') unsubOrders();
+      unsubProds();
+      unsubCats();
+      unsubBrands();
+      unsubOrders();
     };
-  }, []);
+  }, [firebaseConfig]);
 
-  // Persistence Wrappers
-  const updateProducts = (newProds) => {
-    setProductsState(newProds);
-    storageSaveProducts(newProds);
-  };
-
-  const updateCategories = (newCats) => {
-    setCategoriesState(newCats);
-    storageSaveCategories(newCats);
-  };
-
-  const updateBrands = (newBrands) => {
-    setBrandsState(newBrands);
-    storageSaveBrands(newBrands);
-  };
-
-  const updateOrders = (newOrders) => {
-    setOrdersState(newOrders);
-    storageSaveOrders(newOrders);
-  };
-
-  const updateCart = (newCart) => {
-    setCartState(newCart);
-    storageSaveCart(newCart);
-  };
-
-  const updateWishlist = (newWishlist) => {
-    setWishlistState(newWishlist);
-    storageSaveWishlist(newWishlist);
-  };
-
-  const updateUser = (newUser) => {
-    setUserState(newUser);
-    storageSaveUser(newUser);
-  };
-
-  // Add to Bag with flying tag animation
-  const addToCart = (product, size, qty, origin) => {
-    if (!product || !size) return;
-    updateCart((c) => {
-      const idx = c.findIndex((i) => i.id === product.id && i.size === size);
-      if (idx > -1) {
-        const next = [...c];
-        next[idx] = { ...next[idx], qty: next[idx].qty + qty };
-        return next;
-      }
-      return [...c, { id: product.id, size, qty }];
-    });
-
-    if (origin && typeof window !== "undefined") {
-      const targetX = window.innerWidth - (window.innerWidth < 768 ? 56 : 90);
-      const targetY = 28;
-      const id = Date.now() + Math.random();
-      setFlights((f) => [
-        ...f,
-        { id, x: origin.x, y: origin.y, dx: targetX - origin.x, dy: targetY - origin.y, c1: product.c1 || "#1B2A4A", c2: product.c2 || "#0D1830" }
-      ]);
-      setTimeout(() => setFlights((f) => f.filter((fl) => fl.id !== id)), 750);
-      setTimeout(() => setCartOpen(true), 600);
-    } else {
-      setCartOpen(true);
-    }
-  };
-
-  const updateQty = (id, size, delta) => {
-    updateCart((c) =>
-      c.map((i) => (i.id === id && i.size === size ? { ...i, qty: Math.max(1, i.qty + delta) } : i))
-    );
-  };
-
-  const removeItem = (id, size) => {
-    updateCart((c) => c.filter((i) => !(i.id === id && i.size === size)));
-  };
-
-  const toggleWish = (id) => {
-    updateWishlist((w) => (w.includes(id) ? w.filter((x) => x !== id) : [...w, id]));
-  };
-
-  // Place order & deduct stock
-  const placeOrder = (items, total, address, paymentMethod, transactionId) => {
-    const order = {
-      id: `YD-ORD-${Math.floor(2200 + Math.random() * 7000)}`,
-      date: new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric" }),
-      total,
-      status: "Placed",
-      paymentMethod,
-      transactionId,
-      items: items.map((i) => ({ id: i.id, name: i.product.name, size: i.size, qty: i.qty, price: i.product.price })),
-      address,
-    };
-
-    // 1. Deduct stock in real time
-    const updatedProds = deductStockForOrder(items, products);
-    setProductsState(updatedProds);
-
-    // 2. Save order
-    const newOrders = [order, ...orders];
-    updateOrders(newOrders);
-    setLastOrder(order);
-
-    // 3. Clear cart
-    updateCart([]);
-    navigateTo("confirmation");
-
-    // 4. Automatically dispatch order confirmation email from dressesyashal@gmail.com to yashaldressespune@gmail.com
-    sendOrderConfirmationEmail(order);
-  };
-
-  const navigateTo = (newPage, newCat = undefined, newProd = null, push = true) => {
-    setPage(newPage);
-    if (newCat !== undefined) setActiveCategory(newCat);
-    setSelectedProduct(newProd);
-
-    if (push && typeof window !== "undefined" && window.history) {
-      const stateObj = {
-        page: newPage,
-        category: newCat !== undefined ? newCat : activeCategory,
-        prodId: newProd ? newProd.id : null,
-      };
-      window.history.pushState(stateObj, "");
-    }
-  };
-
-  const openProduct = (p) => {
-    navigateTo("product", p.category || activeCategory, p);
-  };
-
-  const goBack = () => {
-    if (typeof window !== "undefined" && window.history.state) {
-      window.history.back();
-    } else if (page === "product") {
-      navigateTo("shop", activeCategory, null, false);
-    } else if (page === "shop" || page === "checkout" || page === "orders") {
-      navigateTo("home", null, null, false);
-    } else {
-      navigateTo("home", null, null, false);
-    }
-  };
-
+  // Browser Navigation History (pushState / popstate)
   useEffect(() => {
     const handlePopState = (e) => {
       if (e.state) {
-        setPage(e.state.page || "home");
-        setActiveCategory(e.state.category || null);
-        if (e.state.prodId) {
-          const found = products.find(p => p.id === e.state.prodId);
-          setSelectedProduct(found || null);
-        } else {
-          setSelectedProduct(null);
+        if (e.state.page) setPage(e.state.page);
+        if (e.state.productId) {
+          const p = products.find(prod => prod.id === e.state.productId);
+          if (p) setSelectedProduct(p);
         }
-      } else {
-        setPage("home");
-        setActiveCategory(null);
-        setSelectedProduct(null);
       }
     };
-
-    if (typeof window !== "undefined" && window.history) {
-      window.history.replaceState({ page: "home", category: null, prodId: null }, "");
-      window.addEventListener("popstate", handlePopState);
-      return () => window.removeEventListener("popstate", handlePopState);
-    }
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
   }, [products]);
 
-  const cartCount = cart.reduce((s, i) => s + i.qty, 0);
+  const navigateTo = (targetPage, prod = null) => {
+    setPage(targetPage);
+    if (prod) {
+      setSelectedProduct(prod);
+      window.history.pushState({ page: targetPage, productId: prod.id }, '', `#${targetPage}/${prod.id}`);
+    } else {
+      window.history.pushState({ page: targetPage }, '', `#${targetPage}`);
+    }
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Cart Handlers
+  const addToCart = (product, size = 'M', qty = 1) => {
+    setCart((prev) => {
+      const idx = prev.findIndex((i) => i.id === product.id && i.size === size);
+      if (idx > -1) {
+        const updated = [...prev];
+        updated[idx].qty += qty;
+        return updated;
+      }
+      return [...prev, { id: product.id, size, qty }];
+    });
+    setIsCartOpen(true);
+  };
+
+  const updateCartQty = (id, size, delta) => {
+    setCart((prev) => {
+      return prev
+        .map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + delta } : i))
+        .filter((i) => i.qty > 0);
+    });
+  };
+
+  const removeCartItem = (id, size) => {
+    setCart((prev) => prev.filter((i) => !(i.id === id && i.size === size)));
+  };
+
+  const toggleWishlist = (productId) => {
+    setWishlist((prev) =>
+      prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
+    );
+  };
+
+  // Admin Product Handlers
+  const handleSaveProduct = async (productData) => {
+    setProducts((prev) => {
+      const exists = prev.some((p) => p.id === productData.id);
+      if (exists) {
+        return prev.map((p) => (p.id === productData.id ? productData : p));
+      }
+      return [productData, ...prev];
+    });
+
+    // Sync to Firestore
+    await saveProductToFirestore(productData);
+  };
+
+  const handleDeleteProduct = async (productId) => {
+    setProducts((prev) => prev.filter((p) => p.id !== productId));
+    await deleteProductFromFirestore(productId);
+  };
+
+  const handleQuickToggleStock = async (productId) => {
+    const prod = products.find((p) => p.id === productId);
+    if (!prod) return;
+    const isNowInStock = !prod.inStock;
+    const updated = { ...prod, inStock: isNowInStock };
+    setProducts((prev) => prev.map((p) => (p.id === productId ? updated : p)));
+    await saveProductToFirestore(updated);
+  };
+
+  const handleSaveFirebaseConfig = (newCfg) => {
+    saveCustomFirebaseConfig(newCfg);
+    setFirebaseConfig(newCfg);
+  };
+
+  const handleSeedFirebase = async () => {
+    const { db } = getFirebaseInstance();
+    if (db) {
+      await seedFirestoreCatalog(db);
+      alert('✓ Initial 52 bespoke garments seeded to Firebase Firestore!');
+    }
+  };
+
+  // Order & Payment Flow
+  const handleProceedToPayment = (orderDraft) => {
+    setPaymentDraft(orderDraft);
+  };
+
+  const handlePaymentSuccess = async (txId) => {
+    const newOrder = {
+      id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
+      date: new Date().toISOString(),
+      customer: paymentDraft.customer,
+      items: paymentDraft.items,
+      subtotal: paymentDraft.subtotal,
+      shipping: paymentDraft.shipping,
+      total: paymentDraft.total,
+      paymentMethod: paymentDraft.paymentMethod,
+      transactionId: txId,
+      status: 'Confirmed',
+    };
+
+    setOrders((prev) => [newOrder, ...prev]);
+    setCart([]);
+    setPaymentDraft(null);
+    setConfirmedOrder(newOrder);
+    setPage('confirmation');
+
+    // Save to Firestore
+    await saveOrderToFirestore(newOrder);
+
+    // Auto-dispatch confirmation email
+    await sendOrderConfirmationEmail(newOrder);
+  };
+
+  // Resolve currently active product dynamically so edits in admin reflect immediately
+  const activeProduct = useMemo(() => {
+    if (!selectedProduct) return null;
+    return products.find((p) => p.id === selectedProduct.id) || selectedProduct;
+  }, [products, selectedProduct]);
 
   return (
     <div className="yd-root min-h-screen flex flex-col">
       <BrandStyles />
       <CurtainIntro />
 
+      {/* Header */}
       <Header
         page={page}
-        setPage={(pg) => navigateTo(pg, pg === "home" ? null : activeCategory, null)}
+        setPage={(pg) => navigateTo(pg)}
         query={query}
         setQuery={setQuery}
-        cartCount={cartCount}
-        onCartClick={() => setCartOpen(true)}
+        cartCount={cart.reduce((sum, it) => sum + it.qty, 0)}
+        onCartClick={() => setIsCartOpen(true)}
         user={user}
-        onLoginClick={() => (user ? navigateTo("orders") : setLoginOpen(true))}
-        onMenuClick={() => setMobileNavOpen(true)}
-        isAdminMode={isAdminMode}
-        setIsAdminMode={setIsAdminMode}
-        onInquiryClick={() => handleOpenInquiry(null)}
-      />
-
-      {!isAdminMode && (
-        <CategoryRail
-          categories={categories}
-          active={activeCategory}
-          onSelect={(c) => navigateTo("shop", c, null)}
-        />
-      )}
-
-      <main className="flex-1">
-        {isAdminMode ? (
-          <AdminDashboard
-            products={products}
-            saveProducts={updateProducts}
-            categories={categories}
-            saveCategories={updateCategories}
-            brands={brands}
-            saveBrands={updateBrands}
-            orders={orders}
-          />
-        ) : (
-          <>
-            {page === "home" && (
-              <HomePage
-                setPage={setPage}
-                setActiveCategory={setActiveCategory}
-                onOpen={openProduct}
-                wishlist={wishlist}
-                toggleWish={toggleWish}
-                products={products}
-                categories={categories}
-                brands={brands}
-              />
-            )}
-            {page === "shop" && (
-              <ShopPage
-                query={query}
-                setQuery={setQuery}
-                activeCategory={activeCategory}
-                setActiveCategory={(c) => navigateTo("shop", c, null)}
-                categories={categories}
-                products={products}
-                brands={brands}
-                onOpen={openProduct}
-                wishlist={wishlist}
-                toggleWish={toggleWish}
-              />
-            )}
-            {page === "product" && (
-              <ProductPage
-                product={selectedProduct}
-                setPage={(pg) => navigateTo(pg)}
-                goBack={goBack}
-                addToCart={addToCart}
-                wishlist={wishlist}
-                toggleWish={toggleWish}
-                onOpen={openProduct}
-                products={products}
-                brands={brands}
-                onOpenInquiry={(prod) => handleOpenInquiry(prod)}
-              />
-            )}
-            {page === "checkout" && (
-              <CheckoutPage
-                cart={cart}
-                products={products}
-                setPage={(pg) => navigateTo(pg)}
-                placeOrder={placeOrder}
-                user={user}
-              />
-            )}
-            {page === "confirmation" && <ConfirmationPage order={lastOrder} setPage={(pg) => navigateTo(pg)} />}
-            {page === "orders" && <OrdersPage orders={orders} products={products} setPage={(pg) => navigateTo(pg)} />}
-          </>
-        )}
-      </main>
-
-      {!isAdminMode && (
-        <Footer
-          setPage={setPage}
-          setActiveCategory={setActiveCategory}
-          onOpenInquiry={() => handleOpenInquiry(null)}
-        />
-      )}
-
-      {/* Floating Inquiry Button */}
-      {!isAdminMode && (
-        <FloatingInquiryButton onClick={() => handleOpenInquiry(null)} />
-      )}
-
-      {/* Store Inquiry Modal */}
-      <InquiryModal
-        open={showInquiryModal}
-        close={() => { setShowInquiryModal(false); setInquiryProduct(null); }}
-        initialProduct={inquiryProduct}
-      />
-
-      <CartDrawer
-        open={cartOpen}
-        close={() => setCartOpen(false)}
-        cart={cart}
-        products={products}
-        updateQty={updateQty}
-        removeItem={removeItem}
-        setPage={setPage}
-        user={user}
-        openLogin={() => setLoginOpen(true)}
-      />
-
-      <LoginModal
-        open={loginOpen}
-        close={() => setLoginOpen(false)}
-        onLogin={(u) => {
-          updateUser(u);
-          setLoginOpen(false);
-          if (cart.length) setPage("checkout");
+        onLoginClick={() => setIsUserLoginOpen(true)}
+        onMenuClick={() => setIsCartOpen(true)}
+        isAdminMode={page === 'admin'}
+        setIsAdminMode={(val) => {
+          if (val) {
+            if (isAdminUnlocked) navigateTo('admin');
+            else setIsMerchantLockOpen(true);
+          } else {
+            navigateTo('home');
+          }
+        }}
+        onInquiryClick={() => {
+          setInquiryProduct(null);
+          setIsInquiryOpen(true);
         }}
       />
 
-      <MobileNav
-        open={mobileNavOpen}
-        close={() => setMobileNavOpen(false)}
-        categories={categories}
-        setPage={setPage}
-        setActiveCategory={setActiveCategory}
+      {/* Main Content Router */}
+      <main className="flex-1">
+        {page === 'home' && (
+          <>
+            <Hero
+              setPage={(pg) => navigateTo(pg)}
+              setActiveCategory={(cat) => {
+                setActiveCategory(cat);
+                navigateTo('shop');
+              }}
+              products={products}
+            />
+            <FestiveBanner
+              setPage={(pg) => navigateTo(pg)}
+              setActiveCategory={(cat) => {
+                setActiveCategory(cat);
+                navigateTo('shop');
+              }}
+            />
+            <CategoryRail
+              categories={categories}
+              activeCategory={activeCategory}
+              setActiveCategory={(cat) => {
+                setActiveCategory(cat);
+                navigateTo('shop');
+              }}
+            />
+
+            {/* Curated Bestsellers Grid */}
+            <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
+              <div className="flex justify-between items-end mb-8">
+                <div>
+                  <span className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest block mb-1">
+                    ATELIER SPOTLIGHT
+                  </span>
+                  <h2 className="font-display text-2xl md:text-3xl font-semibold">
+                    Signature Ready-to-Wear
+                  </h2>
+                </div>
+                <button
+                  onClick={() => navigateTo('shop')}
+                  className="font-mono text-xs text-[var(--ink)] hover:text-[var(--mustard-deep)] font-semibold flex items-center gap-1"
+                >
+                  Explore All 52 Designs →
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+                {(products || []).slice(0, 8).map((p, idx) => (
+                  <ProductCard
+                    key={p.id}
+                    p={p}
+                    index={idx}
+                    brands={brands}
+                    wishlist={wishlist}
+                    toggleWish={toggleWishlist}
+                    onOpen={(prod) => navigateTo('product', prod)}
+                  />
+                ))}
+              </div>
+            </section>
+
+            <Lookbook
+              products={products}
+              onOpen={(prod) => navigateTo('product', prod)}
+              setPage={(pg) => navigateTo(pg)}
+            />
+          </>
+        )}
+
+        {page === 'shop' && (
+          <ShopPage
+            query={query}
+            setQuery={setQuery}
+            activeCategory={activeCategory}
+            setActiveCategory={setActiveCategory}
+            categories={categories}
+            products={products}
+            brands={brands}
+            wishlist={wishlist}
+            toggleWish={toggleWishlist}
+            onOpen={(prod) => navigateTo('product', prod)}
+          />
+        )}
+
+        {page === 'product' && activeProduct && (
+          <ProductPage
+            product={activeProduct}
+            products={products}
+            brands={brands}
+            setPage={(pg) => navigateTo(pg)}
+            goBack={() => navigateTo('shop')}
+            addToCart={addToCart}
+            wishlist={wishlist}
+            toggleWish={toggleWishlist}
+            onOpen={(prod) => navigateTo('product', prod)}
+          />
+        )}
+
+        {page === 'checkout' && (
+          <CheckoutPage
+            cart={cart}
+            products={products}
+            setPage={(pg) => navigateTo(pg)}
+            onProceedToPayment={handleProceedToPayment}
+            user={user}
+          />
+        )}
+
+        {page === 'confirmation' && confirmedOrder && (
+          <ConfirmationPage
+            order={confirmedOrder}
+            setPage={(pg) => navigateTo(pg)}
+            onSendEmailConfirmation={sendOrderConfirmationEmail}
+          />
+        )}
+
+        {page === 'orders' && (
+          <OrdersPage
+            orders={orders}
+            products={products}
+            setPage={(pg) => navigateTo(pg)}
+          />
+        )}
+
+        {page === 'admin' && (
+          <AdminDashboard
+            products={products}
+            setProducts={setProducts}
+            categories={categories}
+            setCategories={setCategories}
+            brands={brands}
+            setBrands={setBrands}
+            orders={orders}
+            onLogout={() => {
+              setIsAdminUnlocked(false);
+              sessionStorage.removeItem('yd_admin_unlocked');
+              navigateTo('home');
+            }}
+            onOpenAddProductModal={() => {
+              setEditingProduct(null);
+              setIsProductModalOpen(true);
+            }}
+            onSeedFirebase={handleSeedFirebase}
+            firebaseStatus={isFirebaseLive}
+            firebaseConfig={firebaseConfig}
+            onSaveFirebaseConfig={handleSaveFirebaseConfig}
+            editingProduct={editingProduct}
+            setEditingProduct={setEditingProduct}
+            isProductModalOpen={isProductModalOpen}
+            setIsProductModalOpen={setIsProductModalOpen}
+            onSaveProduct={handleSaveProduct}
+            onDeleteProduct={handleDeleteProduct}
+            onQuickToggleStock={handleQuickToggleStock}
+          />
+        )}
+      </main>
+
+      {/* Floating Inquiry Button & Modal */}
+      <FloatingInquiryButton onClick={() => { setInquiryProduct(null); setIsInquiryOpen(true); }} />
+      <InquiryModal
+        open={isInquiryOpen}
+        close={() => setIsInquiryOpen(false)}
+        initialProduct={inquiryProduct}
       />
 
-      {/* Flying Tag Animation Nodes */}
-      {flights.map((f) => (
-        <div key={f.id} className="fly-tag" style={{ left: f.x, top: f.y, "--dx": `${f.dx}px`, "--dy": `${f.dy}px` }}>
-          <svg width="26" height="26" viewBox="0 0 26 26">
-            <path
-              d="M13 2 L23 11 L23 21 A3 3 0 0 1 20 24 L6 24 A3 3 0 0 1 3 21 L3 11 Z"
-              fill={`url(#fg-${f.id})`}
-              stroke="var(--ink)"
-              strokeWidth="1.2"
-            />
-            <circle cx="13" cy="9" r="1.6" fill="var(--ivory)" stroke="var(--ink)" strokeWidth="1" />
-            <defs>
-              <linearGradient id={`fg-${f.id}`} x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stopColor={f.c1} />
-                <stop offset="1" stopColor={f.c2} />
-              </linearGradient>
-            </defs>
-          </svg>
-        </div>
-      ))}
+      {/* Cart Drawer */}
+      <CartDrawer
+        open={isCartOpen}
+        close={() => setIsCartOpen(false)}
+        cart={cart}
+        products={products}
+        updateQty={(id, delta, size) => updateCartQty(id, size, delta)}
+        removeItem={(id, size) => removeCartItem(id, size)}
+        setPage={(pg) => {
+          setIsCartOpen(false);
+          navigateTo(pg);
+        }}
+        user={user}
+        openLogin={() => setIsUserLoginOpen(true)}
+      />
 
-      {/* Logged in indicator */}
-      {user && (
-        <button
-          onClick={() => updateUser(null)}
-          className="fixed bottom-4 left-4 z-30 flex items-center gap-1.5 bg-white shadow-lg rounded-full px-3.5 py-2 text-xs font-mono border border-[var(--line)] hover:bg-gray-50"
-        >
-          <LogOut size={13} /> Log out {user.name.split(" ")[0]}
-        </button>
-      )}
+      {/* User Login Modal */}
+      <LoginModal
+        open={isUserLoginOpen}
+        close={() => setIsUserLoginOpen(false)}
+        onLogin={(userData) => {
+          setUser(userData);
+          setIsUserLoginOpen(false);
+        }}
+      />
+
+      {/* Merchant PIN Lock Modal */}
+      <MerchantLoginModal
+        open={isMerchantLockOpen}
+        close={() => setIsMerchantLockOpen(false)}
+        onUnlock={() => {
+          setIsAdminUnlocked(true);
+          sessionStorage.setItem('yd_admin_unlocked', 'true');
+          navigateTo('admin');
+        }}
+      />
+
+      {/* Razorpay Gateway Simulation Modal */}
+      <RazorpayGatewayModal
+        orderDraft={paymentDraft}
+        onSuccess={handlePaymentSuccess}
+        onCancel={() => setPaymentDraft(null)}
+      />
+
+      {/* Footer */}
+      <Footer
+        setPage={(pg) => navigateTo(pg)}
+        setActiveCategory={(cat) => {
+          setActiveCategory(cat);
+          navigateTo('shop');
+        }}
+        onOpenInquiry={() => {
+          setInquiryProduct(null);
+          setIsInquiryOpen(true);
+        }}
+      />
     </div>
   );
 }
-

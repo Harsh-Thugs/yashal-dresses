@@ -1,10 +1,22 @@
 import React, { useState, useEffect, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
-export default function CategoryRail({ categories, active, onSelect }) {
+export default function CategoryRail({
+  categories = [],
+  active = null,
+  onSelect = () => {},
+  activeCategory = null,
+  setActiveCategory = null
+}) {
   const scrollRef = useRef(null);
   const [canLeft, setCanLeft] = useState(false);
   const [canRight, setCanRight] = useState(false);
+
+  const currentActive = active !== undefined && active !== null ? active : activeCategory;
+  const handleSelect = (cat) => {
+    if (setActiveCategory) setActiveCategory(cat);
+    if (onSelect) onSelect(cat);
+  };
 
   const checkScroll = () => {
     const el = scrollRef.current;
@@ -48,18 +60,18 @@ export default function CategoryRail({ categories, active, onSelect }) {
           className="flex gap-2 overflow-x-auto scrollbar-none py-2.5"
         >
           <button
-            onClick={() => onSelect(null)}
-            className={`cat-chip px-3 py-1.5 shrink-0 ${!active ? "active" : ""}`}
-            style={{ color: !active ? undefined : "var(--ivory)" }}
+            onClick={() => handleSelect(null)}
+            className={`cat-chip px-3 py-1.5 shrink-0 ${!currentActive ? "active" : ""}`}
+            style={{ color: !currentActive ? undefined : "var(--ivory)" }}
           >
             All Segments
           </button>
           {categories.map((c) => (
             <button
               key={c.name}
-              onClick={() => onSelect(c.name)}
-              className={`cat-chip px-3 py-1.5 shrink-0 ${active === c.name ? "active" : ""}`}
-              style={{ color: active === c.name ? undefined : "var(--ivory)" }}
+              onClick={() => handleSelect(c.name)}
+              className={`cat-chip px-3 py-1.5 shrink-0 ${currentActive === c.name ? "active" : ""}`}
+              style={{ color: currentActive === c.name ? undefined : "var(--ivory)" }}
             >
               {c.name}
             </button>
@@ -68,7 +80,7 @@ export default function CategoryRail({ categories, active, onSelect }) {
         {canRight && (
           <>
             <div className="absolute right-4 md:right-6 top-0 bottom-0 w-10 pointer-events-none z-10"
-              style={{ background: "linear-gradient(270deg, var(--ink), transparent)" }} />
+              style={{ background: "linear-gradient(-90deg, var(--ink), transparent)" }} />
             <button
               onClick={() => scrollBy(1)}
               className="absolute right-0 top-1/2 -translate-y-1/2 z-20 w-7 h-7 rounded-full flex items-center justify-center shadow"

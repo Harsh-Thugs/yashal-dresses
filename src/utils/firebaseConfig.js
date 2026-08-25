@@ -9,33 +9,31 @@
 
 const LOCAL_STORAGE_FIREBASE_KEY = 'yd_firebase_custom_config_v1';
 
-// Default Firebase credentials provided for yashal-2a13e
-const DEFAULT_FIREBASE_CONFIG = {
-  apiKey: "AIzaSyDLPawgTqfZr2zugOGAZegOE1z4hiARe0Y",
-  authDomain: "yashal-2a13e.firebaseapp.com",
-  databaseURL: "https://yashal-2a13e-default-rtdb.asia-southeast1.firebasedatabase.app",
-  projectId: "yashal-2a13e",
-  storageBucket: "yashal-2a13e.firebasestorage.app",
-  messagingSenderId: "677490942717",
-  appId: "1:677490942717:web:bd9ec655ebcdb5d705d494",
-  measurementId: "G-2ZT1KR1MQF"
-};
-
 export function getActiveFirebaseConfig() {
+  const envConfig = {
+    apiKey: import.meta.env?.VITE_FIREBASE_API_KEY || "",
+    authDomain: import.meta.env?.VITE_FIREBASE_AUTH_DOMAIN || "",
+    projectId: import.meta.env?.VITE_FIREBASE_PROJECT_ID || "",
+    storageBucket: import.meta.env?.VITE_FIREBASE_STORAGE_BUCKET || "",
+    messagingSenderId: import.meta.env?.VITE_FIREBASE_MESSAGING_SENDER_ID || "",
+    appId: import.meta.env?.VITE_FIREBASE_APP_ID || "",
+    measurementId: import.meta.env?.VITE_FIREBASE_MEASUREMENT_ID || "",
+  };
+
   if (typeof window !== "undefined") {
     try {
       const saved = localStorage.getItem(LOCAL_STORAGE_FIREBASE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
         if (parsed.projectId && parsed.apiKey) {
-          return { ...DEFAULT_FIREBASE_CONFIG, ...parsed };
+          return { ...envConfig, ...parsed };
         }
       }
     } catch (e) {
       console.warn("Could not read custom Firebase config from localStorage", e);
     }
   }
-  return DEFAULT_FIREBASE_CONFIG;
+  return envConfig;
 }
 
 export function saveCustomFirebaseConfig(config) {
