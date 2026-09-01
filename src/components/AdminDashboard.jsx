@@ -370,6 +370,8 @@ export default function AdminDashboard({
                 letterSpacing: '0.5px',
                 cursor: 'pointer',
                 transition: 'all 0.15s ease',
+                flexShrink: 0,
+                whiteSpace: 'nowrap',
               }}
             >
               {t.label}

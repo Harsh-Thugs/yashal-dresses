@@ -8,18 +8,20 @@ const STATUS_STEPS = ["Placed", "Packed", "Shipped", "Out for Delivery", "Delive
 function OrderTracker({ status }) {
   const idx = STATUS_STEPS.indexOf(status) >= 0 ? STATUS_STEPS.indexOf(status) : 0;
   return (
-    <div className="flex items-center mt-4">
-      {STATUS_STEPS.map((s, i) => (
-        <React.Fragment key={s}>
-          <div className="flex flex-col items-center gap-1.5">
-            <div className={`step-dot ${i <= idx ? "done" : ""}`} />
-            <span className="text-[10px] font-mono text-center w-16 opacity-70">{s}</span>
-          </div>
-          {i < STATUS_STEPS.length - 1 && (
-            <div className="flex-1 h-[1.5px] mb-4" style={{ background: i < idx ? "var(--mustard)" : "var(--line)" }} />
-          )}
-        </React.Fragment>
-      ))}
+    <div className="overflow-x-auto pb-1 mt-4">
+      <div className="flex items-center min-w-[380px] sm:min-w-0">
+        {STATUS_STEPS.map((s, i) => (
+          <React.Fragment key={s}>
+            <div className="flex flex-col items-center gap-1.5 shrink-0">
+              <div className={`step-dot ${i <= idx ? "done" : ""}`} />
+              <span className="text-[10px] font-mono text-center w-16 opacity-70 leading-tight">{s}</span>
+            </div>
+            {i < STATUS_STEPS.length - 1 && (
+              <div className="flex-1 h-[1.5px] mb-4 min-w-[24px]" style={{ background: i < idx ? "var(--mustard)" : "var(--line)" }} />
+            )}
+          </React.Fragment>
+        ))}
+      </div>
     </div>
   );
 }

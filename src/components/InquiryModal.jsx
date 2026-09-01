@@ -193,18 +193,18 @@ export default function InquiryModal({ open, close, initialProduct = null }) {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Your Name (Optional)"
-                className="border rounded-lg px-3 py-2 text-xs outline-none focus:border-black"
+                className="border rounded-lg px-3 py-2.5 text-xs outline-none focus:border-black bg-white"
               />
               <input
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Your Phone Number"
-                className="border rounded-lg px-3 py-2 text-xs font-mono outline-none focus:border-black"
+                className="border rounded-lg px-3 py-2.5 text-xs font-mono outline-none focus:border-black bg-white"
               />
             </div>
 

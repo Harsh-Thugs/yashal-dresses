@@ -70,7 +70,7 @@ export function CheckoutPage({
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-[1.5fr_1fr] gap-8">
         {/* Left: Customer & Delivery Details */}
         <form onSubmit={handleSubmit} style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
           <h2 className="font-display" style={{ fontSize: "20px", margin: "0 0 20px 0", color: "var(--ink)" }}>
@@ -90,7 +90,7 @@ export function CheckoutPage({
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
               <div>
                 <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Contact Phone *</label>
                 <input
@@ -172,7 +172,7 @@ export function CheckoutPage({
         </form>
 
         {/* Right: Order Summary */}
-        <div style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", height: "fit-content" }}>
+        <div className="bg-[var(--ivory)] border border-[var(--line)] rounded-[10px] p-5 md:p-7 h-fit shadow-[0_4px_15px_rgba(0,0,0,0.03)]">
           <h3 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "18px" }}>
             Bag Summary ({items.reduce((s, i) => s + i.quantity, 0)} Items)
           </h3>
@@ -351,64 +351,67 @@ export function ConfirmationPage({
   };
 
   return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 16px" }}>
+    <div className="max-w-[800px] mx-auto px-4 py-8 sm:py-10">
       {/* Top Banner */}
-      <div style={{ textAlign: "center", marginBottom: "32px" }}>
-        <div style={{ width: "64px", height: "64px", borderRadius: "50%", background: "var(--ink)", color: "var(--mustard)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px auto" }}>
-          <CheckCircle2 size={36} />
+      <div className="text-center mb-6 sm:mb-8">
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-[var(--ink)] text-[var(--mustard)] flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow">
+          <CheckCircle2 size={32} />
         </div>
-        <p style={{ fontFamily: "IBM Plex Mono", fontSize: "11px", letterSpacing: "2px", textTransform: "uppercase", color: "var(--mustard-deep)" }}>
-          TRANSACTION VERIFIED & CONFIRMED
+        <p className="font-mono text-[10.5px] sm:text-[11px] tracking-widest uppercase text-[var(--mustard-deep)] font-bold">
+          TRANSACTION VERIFIED &amp; CONFIRMED
         </p>
-        <h1 className="font-display" style={{ margin: "4px 0", fontSize: "28px", color: "var(--ink)" }}>
+        <h1 className="font-display text-2xl sm:text-3xl my-1 text-[var(--ink)] font-semibold">
           Order Confirmed, Ref #{order.id}
         </h1>
-        <p style={{ fontSize: "14px", color: "var(--ink-soft)" }}>
+        <p className="text-xs sm:text-sm text-[var(--ink-soft)] max-w-md mx-auto">
           Thank you, <strong>{order.customer?.name}</strong>. Your bespoke menswear order is being tailored for dispatch.
         </p>
       </div>
 
       {/* Printable Tax Invoice Card */}
-      <div id="printable-tax-invoice" style={{ background: "var(--ivory)", border: "2px solid var(--line)", borderRadius: "10px", padding: "32px", boxShadow: "0 8px 24px rgba(0,0,0,0.04)", marginBottom: "28px" }}>
+      <div id="printable-tax-invoice" className="bg-[var(--ivory)] border-2 border-[var(--line)] rounded-[10px] p-4 sm:p-8 shadow-[0_8px_24px_rgba(0,0,0,0.04)] mb-7">
         {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid var(--line)", paddingBottom: "20px", marginBottom: "20px" }}>
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b-2 border-[var(--line)] pb-4 sm:pb-5 mb-5 gap-3">
           <div>
-            <h2 className="font-display" style={{ margin: 0, fontSize: "22px", color: "var(--ink)" }}>
+            <h2 className="font-display text-xl sm:text-2xl font-bold text-[var(--ink)]">
               YASHAL DRESSES
             </h2>
-            <p style={{ margin: "4px 0 0 0", fontSize: "11px", color: "var(--ink-soft)", lineHeight: "1.4" }}>
-              {STORE_CONTACT.address}<br />
+            <p className="text-[11px] text-[var(--ink-soft)] leading-snug mt-1">
+              {STORE_CONTACT.address?.line1 || "Sector 25, Plot 601, Nigdi"}, {STORE_CONTACT.address?.city || "Pune"}<br />
               Phone: {STORE_CONTACT.phone} | Email: {STORE_CONTACT.email}
             </p>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <span style={{ fontSize: "11px", fontFamily: "IBM Plex Mono", background: "var(--ink)", color: "var(--mustard)", padding: "4px 8px", borderRadius: "4px" }}>
+          <div className="text-left sm:text-right w-full sm:w-auto">
+            <span className="text-[10px] sm:text-[11px] font-mono bg-[var(--ink)] text-[var(--mustard)] px-2 py-1 rounded inline-block font-bold">
               TAX INVOICE
             </span>
-            <div style={{ fontSize: "12px", fontWeight: "bold", marginTop: "6px" }}>Invoice #{order.id}</div>
-            <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>{new Date(order.date).toLocaleDateString("en-IN")}</div>
+            <div className="text-xs font-bold mt-1.5">Invoice #{order.id}</div>
+            <div className="text-[11px] text-[var(--ink-soft)] font-mono">{new Date(order.date).toLocaleDateString("en-IN")}</div>
           </div>
         </div>
 
         {/* Customer & Payment Info */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px", marginBottom: "24px", fontSize: "12px", background: "var(--parchment)", padding: "16px", borderRadius: "6px" }}>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-xs bg-[var(--parchment)] p-3.5 sm:p-4 rounded-md">
           <div>
-            <strong>BILLED TO:</strong><br />
-            {order.customer?.name}<br />
-            {order.customer?.phone}<br />
-            {order.customer?.address}
+            <strong className="font-mono text-[10px] tracking-wider text-[var(--ink-soft)] block mb-1">BILLED TO:</strong>
+            <div className="font-bold text-sm">{order.customer?.name}</div>
+            <div className="font-mono text-[11px] text-gray-700">📞 {order.customer?.phone}</div>
+            <div className="text-gray-600 mt-1 leading-relaxed">{order.customer?.address}</div>
           </div>
-          <div style={{ textAlign: "right" }}>
-            <strong>PAYMENT STATUS:</strong><br />
-            <span style={{ color: "#16a34a", fontWeight: "bold" }}>✓ {order.paymentMethod || "PAID"}</span><br />
-            Txn Ref: {order.transactionId || "N/A"}<br />
-            Delivery: 2 - 4 Business Days
+          <div className="text-left sm:text-right pt-2 sm:pt-0 border-t sm:border-t-0 border-[var(--line)]">
+            <strong className="font-mono text-[10px] tracking-wider text-[var(--ink-soft)] block mb-1">PAYMENT STATUS:</strong>
+            <span className="text-emerald-700 font-bold inline-block bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+              ✓ {order.paymentMethod || "PAID"}
+            </span>
+            <div className="font-mono text-[10px] text-gray-500 mt-1">Txn Ref: {order.transactionId || "N/A"}</div>
+            <div className="text-[11px] text-amber-900 font-medium mt-0.5">Est. Delivery: 2 - 4 Business Days</div>
           </div>
         </div>
 
         {/* Items Table */}
-        <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", marginBottom: "20px" }}>
-          <thead>
+        <div className="overflow-x-auto mb-5">
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "13px", minWidth: "500px" }}>
+            <thead>
             <tr style={{ background: "rgba(26,18,36,0.06)", borderBottom: "1px solid var(--line)", textAlign: "left", fontFamily: "IBM Plex Mono", fontSize: "11px" }}>
               <th style={{ padding: "10px" }}>Item Description</th>
               <th style={{ padding: "10px", textAlign: "center" }}>Size</th>
@@ -430,57 +433,55 @@ export function ConfirmationPage({
                 <td style={{ padding: "10px", textAlign: "right", fontWeight: "600" }}>{money(it.price * it.quantity)}</td>
               </tr>
             ))}
-          </tbody>
-        </table>
+            </tbody>
+          </table>
+        </div>
 
         {/* Grand Total */}
-        <div style={{ display: "flex", justifyContent: "flex-end", borderTop: "2px solid var(--line)", paddingTop: "14px" }}>
-          <div style={{ width: "240px", fontSize: "13px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>Subtotal:</span>
-              <span>{money(order.subtotal || order.total)}</span>
+        <div className="flex justify-end border-t-2 border-[var(--line)] pt-3.5">
+          <div className="w-full sm:w-60 text-xs sm:text-sm space-y-1">
+            <div className="flex justify-between">
+              <span className="opacity-70">Subtotal:</span>
+              <span className="font-medium">{money(order.subtotal || order.total)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-              <span>Shipping:</span>
-              <span>{order.shipping ? money(order.shipping) : "FREE"}</span>
+            <div className="flex justify-between">
+              <span className="opacity-70">Shipping:</span>
+              <span className="font-medium">{order.shipping ? money(order.shipping) : "FREE"}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold", borderTop: "1px solid var(--line)", paddingTop: "8px", marginTop: "8px" }}>
+            <div className="flex justify-between text-base font-bold border-t border-[var(--line)] pt-2 mt-1 text-[var(--mustard-deep)]">
               <span>Total Paid:</span>
-              <span style={{ color: "var(--mustard-deep)" }}>{money(order.total)}</span>
+              <span>{money(order.total)}</span>
             </div>
           </div>
         </div>
       </div>
 
       {/* Action Buttons */}
-      <div style={{ display: "flex", gap: "14px", justifyContent: "center", flexWrap: "wrap" }}>
+      <div className="flex flex-col sm:flex-row gap-3 justify-center">
         <button
           onClick={handlePrint}
-          className="yd-btn"
-          style={{ padding: "12px 20px", background: "var(--ink)", color: "var(--ivory)", display: "flex", alignItems: "center", gap: "8px" }}
+          className="yd-btn py-3 px-5 bg-[var(--ink)] text-[var(--ivory)] flex items-center justify-center gap-2 rounded shadow"
         >
           <Printer size={16} color="var(--mustard)" /> Print Tax Invoice
         </button>
 
         <button
           onClick={handleSendEmail}
-          className="yd-btn"
-          style={{ padding: "12px 20px", background: "var(--mustard)", color: "var(--ink)", border: "none", fontWeight: "bold", display: "flex", alignItems: "center", gap: "8px" }}
+          className="yd-btn py-3 px-5 bg-[var(--mustard)] text-[var(--ink)] flex items-center justify-center gap-2 rounded shadow font-bold"
         >
           <Send size={16} /> Send Email Copy
         </button>
 
         <button
           onClick={() => setPage("shop")}
-          className="yd-btn"
-          style={{ padding: "12px 20px", background: "transparent", border: "1px solid var(--line)", color: "var(--ink)" }}
+          className="yd-btn py-3 px-5 bg-transparent border border-[var(--line)] text-[var(--ink)] flex items-center justify-center rounded"
         >
           Continue Shopping
         </button>
       </div>
 
       {emailStatus && (
-        <p style={{ textAlign: "center", fontSize: "12px", color: "var(--mustard-deep)", marginTop: "16px", fontWeight: "600" }}>
+        <p className="text-center text-xs text-[var(--mustard-deep)] mt-4 font-semibold animate-pulse">
           {emailStatus}
         </p>
       )}
