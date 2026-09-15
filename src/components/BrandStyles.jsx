@@ -4,9 +4,15 @@ export default function BrandStyles() {
   return (
     <style>{`
       @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,450;0,9..144,600;0,9..144,700;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap');
+      
+      *, *::before, *::after { box-sizing: border-box; }
+      html, body { margin: 0; padding: 0; width: 100%; max-width: 100vw; overflow-x: hidden; -webkit-tap-highlight-color: transparent; }
+      #root { width: 100%; max-width: 100vw; overflow-x: hidden; }
+
       .yd-root{ --ink:#1A1224; --ink-soft:#4A3B5C; --parchment:#F2E8D6; --ivory:#FBF6EC;
         --mustard:#D4AF37; --mustard-deep:#A8841C; --oxblood:#5C1A3D; --royal:#3B2063; --line:rgba(26,18,36,0.16);
-        font-family:'Inter',sans-serif; background:var(--parchment); color:var(--ink); }
+        font-family:'Inter',sans-serif; background:var(--parchment); color:var(--ink);
+        width: 100%; max-width: 100vw; overflow-x: hidden; min-height: 100vh; }
       .yd-root .font-display{ font-family:'Fraunces',serif; }
       .yd-root .font-mono{ font-family:'IBM Plex Mono',monospace; letter-spacing:.04em; }
       .yd-ink-bg{ background:linear-gradient(155deg, var(--ink), #241736); color:var(--ivory); border-bottom:1px solid rgba(212,175,55,0.25); }
@@ -19,7 +25,7 @@ export default function BrandStyles() {
       .yd-btn-outline:hover{ background:var(--ink); color:var(--ivory); }
       
       .tag-card{ background:var(--ivory); border:1px solid var(--line); border-radius:10px; position:relative;
-        overflow:hidden; transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        overflow:hidden; transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; max-width: 100%; }
       .tag-card:hover{ transform:translateY(-3px); box-shadow:0 16px 30px -14px rgba(26,18,36,0.45), 0 0 0 1px rgba(212,175,55,0.5); border-color:rgba(212,175,55,0.5); }
       .tag-hole{ position:absolute; top:10px; left:10px; width:16px; height:16px; border-radius:999px;
         background:var(--parchment); border:2px solid var(--mustard); z-index:2; }
@@ -32,8 +38,8 @@ export default function BrandStyles() {
       .cat-chip:hover:not(.active){ border-color:var(--mustard); }
       
       .divider{ border-top:1px solid var(--line); }
-      .scrollbar-none::-webkit-scrollbar{ display:none; }
-      .scrollbar-none{ -ms-overflow-style:none; scrollbar-width:none; }
+      .scrollbar-none::-webkit-scrollbar, .no-scrollbar::-webkit-scrollbar{ display:none; }
+      .scrollbar-none, .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; -webkit-overflow-scrolling: touch; }
       .step-dot{ width:10px; height:10px; border-radius:999px; background:var(--line); }
       .step-dot.done{ background:var(--mustard); }
       

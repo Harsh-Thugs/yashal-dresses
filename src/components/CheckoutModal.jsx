@@ -15,10 +15,15 @@ export function CheckoutPage({
   user
 }) {
   const items = cart
-    .map((c) => ({ ...c, product: products.find((p) => p.id === c.id) }))
+    .map((c) => ({
+      ...c,
+      qty: c.qty || c.quantity || 1,
+      quantity: c.qty || c.quantity || 1,
+      product: products.find((p) => p.id === c.id)
+    }))
     .filter((i) => Boolean(i.product));
 
-  const subtotal = items.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const subtotal = items.reduce((s, i) => s + i.product.price * (i.qty || i.quantity || 1), 0);
   const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
   const total = subtotal + shipping;
 
@@ -46,7 +51,8 @@ export function CheckoutPage({
         brand: it.product.brand || "Yashal",
         price: it.product.price,
         size: it.size,
-        quantity: it.quantity,
+        qty: it.qty || it.quantity || 1,
+        quantity: it.qty || it.quantity || 1,
         image: (it.product.images && it.product.images[0]) || it.product.image || null,
       })),
       subtotal,
@@ -57,152 +63,152 @@ export function CheckoutPage({
   };
 
   return (
-    <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 16px" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+    <div className="max-w-6xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8 w-full overflow-hidden">
+      <div className="flex flex-wrap justify-between items-center gap-2 mb-4 sm:mb-6">
         <button
           onClick={() => setPage("shop")}
-          style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", color: "var(--ink)", fontFamily: "IBM Plex Mono", fontSize: "12px", cursor: "pointer" }}
+          className="flex items-center gap-1.5 font-mono text-xs text-[var(--ink)] bg-white border border-[var(--line)] px-3.5 py-1.5 rounded-full hover:bg-[var(--mustard)] hover:text-black font-semibold transition-all shadow-sm cursor-pointer"
         >
           ← Return to Atelier Shop
         </button>
-        <span style={{ fontSize: "11px", fontFamily: "IBM Plex Mono", color: "var(--mustard-deep)", letterSpacing: "1px" }}>
-          BESPOKE CHECKOUT & SECURE DISPATCH
+        <span className="text-[10px] sm:text-[11px] font-mono text-[var(--mustard-deep)] font-bold tracking-wider">
+          BESPOKE CHECKOUT &amp; SECURE DISPATCH
         </span>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: "32px" }}>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 md:gap-8">
         {/* Left: Customer & Delivery Details */}
-        <form onSubmit={handleSubmit} style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", boxShadow: "0 4px 15px rgba(0,0,0,0.03)" }}>
-          <h2 className="font-display" style={{ fontSize: "20px", margin: "0 0 20px 0", color: "var(--ink)" }}>
-            1. Patron & Delivery Details
+        <form onSubmit={handleSubmit} className="lg:col-span-7 bg-[var(--ivory)] border border-[var(--line)] rounded-xl p-4 sm:p-7 shadow-sm">
+          <h2 className="font-display text-lg sm:text-xl font-semibold mb-4 text-[var(--ink)]">
+            1. Patron &amp; Delivery Details
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <div className="flex flex-col gap-3.5 sm:gap-4">
             <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Full Name *</label>
+              <label className="block text-xs font-semibold mb-1">Full Name *</label>
               <input
                 type="text"
                 required
                 value={form.name}
                 onChange={e => setForm({ ...form, name: e.target.value })}
                 placeholder="e.g. Harshvardhan Shinde"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                className="w-full p-2.5 text-sm rounded-md border border-[var(--line)] bg-[var(--parchment)] outline-none focus:border-[var(--mustard)]"
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Contact Phone *</label>
+                <label className="block text-xs font-semibold mb-1">Contact Phone *</label>
                 <input
                   type="tel"
                   required
                   value={form.phone}
                   onChange={e => setForm({ ...form, phone: e.target.value })}
                   placeholder="e.g. 9822019283"
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                  className="w-full p-2.5 text-sm rounded-md border border-[var(--line)] bg-[var(--parchment)] outline-none focus:border-[var(--mustard)]"
                 />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Email Address</label>
+                <label className="block text-xs font-semibold mb-1">Email Address</label>
                 <input
                   type="email"
                   value={form.email}
                   onChange={e => setForm({ ...form, email: e.target.value })}
                   placeholder="For digital invoice"
-                  style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                  className="w-full p-2.5 text-sm rounded-md border border-[var(--line)] bg-[var(--parchment)] outline-none focus:border-[var(--mustard)]"
                 />
               </div>
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Shipping Address in Full *</label>
+              <label className="block text-xs font-semibold mb-1">Shipping Address in Full *</label>
               <textarea
                 required
                 rows={3}
                 value={form.address}
                 onChange={e => setForm({ ...form, address: e.target.value })}
                 placeholder="Flat / Bungalow No., Landmark, City, Pincode"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                className="w-full p-2.5 text-sm rounded-md border border-[var(--line)] bg-[var(--parchment)] outline-none focus:border-[var(--mustard)]"
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: "12px", fontWeight: "600", marginBottom: "6px" }}>Tailoring / Fitting Instructions (Optional)</label>
+              <label className="block text-xs font-semibold mb-1">Tailoring / Fitting Instructions (Optional)</label>
               <input
                 type="text"
                 value={form.notes}
                 onChange={e => setForm({ ...form, notes: e.target.value })}
                 placeholder="e.g. Please hem trousers to 38 inches"
-                style={{ width: "100%", padding: "10px 12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)" }}
+                className="w-full p-2.5 text-sm rounded-md border border-[var(--line)] bg-[var(--parchment)] outline-none focus:border-[var(--mustard)]"
               />
             </div>
           </div>
 
-          <h2 className="font-display" style={{ fontSize: "20px", margin: "28px 0 16px 0", color: "var(--ink)" }}>
+          <h2 className="font-display text-lg sm:text-xl font-semibold mt-6 mb-3 text-[var(--ink)]">
             2. Payment Gateway Mode
           </h2>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px", marginBottom: "24px" }}>
-            <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "upi" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "upi" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+          <div className="flex flex-col gap-2.5 mb-6">
+            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${paymentMode === "upi" ? "border-[var(--mustard)] bg-amber-500/10 ring-1 ring-[var(--mustard)]" : "border-[var(--line)] bg-[var(--parchment)]"}`}>
               <input type="radio" name="pay" checked={paymentMode === "upi"} onChange={() => setPaymentMode("upi")} />
-              <QrCode size={20} color="var(--mustard-deep)" />
+              <QrCode size={20} color="var(--mustard-deep)" className="shrink-0" />
               <div>
-                <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay UPI / Dynamic QR Code</div>
-                <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Google Pay, PhonePe, Paytm, BHIM</div>
+                <div className="font-semibold text-xs sm:text-sm">Razorpay UPI / Dynamic QR Code</div>
+                <div className="text-[11px] text-[var(--ink-soft)]">Google Pay, PhonePe, Paytm, BHIM</div>
               </div>
             </label>
 
-            <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "card" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "card" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+            <label className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${paymentMode === "card" ? "border-[var(--mustard)] bg-amber-500/10 ring-1 ring-[var(--mustard)]" : "border-[var(--line)] bg-[var(--parchment)]"}`}>
               <input type="radio" name="pay" checked={paymentMode === "card"} onChange={() => setPaymentMode("card")} />
-              <CreditCard size={20} color="var(--mustard-deep)" />
+              <CreditCard size={20} color="var(--mustard-deep)" className="shrink-0" />
               <div>
-                <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay Credit / Debit Card & Netbanking</div>
-                <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Visa, Mastercard, RuPay, Corporate Amex</div>
+                <div className="font-semibold text-xs sm:text-sm">Razorpay Credit / Debit Card &amp; Netbanking</div>
+                <div className="text-[11px] text-[var(--ink-soft)]">Visa, Mastercard, RuPay, Corporate Amex</div>
               </div>
             </label>
           </div>
 
           <button
             type="submit"
-            className="yd-btn yd-btn-primary"
-            style={{ width: "100%", padding: "14px", background: "var(--ink)", color: "var(--ivory)", fontSize: "14px", fontWeight: "bold", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+            className="yd-btn yd-btn-primary w-full py-3.5 text-sm font-bold flex items-center justify-center gap-2 shadow-lg cursor-pointer"
+            style={{ background: "var(--ink)", color: "var(--ivory)" }}
           >
-            <Lock size={16} color="var(--mustard)" /> Proceed to Authorize & Pay {money(total)}
+            <Lock size={16} color="var(--mustard)" /> Proceed to Authorize &amp; Pay {money(total)}
           </button>
         </form>
 
         {/* Right: Order Summary */}
-        <div style={{ background: "var(--ivory)", border: "1px solid var(--line)", borderRadius: "10px", padding: "28px", height: "fit-content" }}>
-          <h3 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "18px" }}>
-            Bag Summary ({items.reduce((s, i) => s + i.quantity, 0)} Items)
+        <div className="lg:col-span-5 bg-[var(--ivory)] border border-[var(--line)] rounded-xl p-4 sm:p-7 shadow-sm h-fit">
+          <h3 className="font-display text-base sm:text-lg font-semibold mb-3">
+            Bag Summary ({items.reduce((s, i) => s + (i.qty || i.quantity || 1), 0)} Items)
           </h3>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", maxHeight: "320px", overflowY: "auto" }}>
+          <div className="flex flex-col gap-3 mb-5 max-h-72 overflow-y-auto no-scrollbar">
             {items.map((it, idx) => (
-              <div key={idx} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderBottom: "1px dashed var(--line)", paddingBottom: "10px" }}>
-                <div>
-                  <div style={{ fontWeight: "600", fontSize: "13px" }}>{it.product.name}</div>
-                  <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>
-                    Size: {it.size} • Qty: {it.quantity} • {it.product.brand}
+              <div key={idx} className="flex justify-between items-center border-b border-dashed border-[var(--line)] pb-2.5 gap-2">
+                <div className="min-w-0 flex-1">
+                  <div className="font-semibold text-xs sm:text-sm truncate">{it.product.name}</div>
+                  <div className="text-[11px] text-[var(--ink-soft)]">
+                    Size: {it.size} • Qty: {it.qty || it.quantity || 1} • {it.product.brand}
                   </div>
                 </div>
-                <div style={{ fontWeight: "600", fontSize: "13px", color: "var(--mustard-deep)" }}>
-                  {money(it.product.price * it.quantity)}
+                <div className="font-semibold text-xs sm:text-sm text-[var(--mustard-deep)] shrink-0">
+                  {money(it.product.price * (it.qty || it.quantity || 1))}
                 </div>
               </div>
             ))}
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", borderTop: "1px solid var(--line)", paddingTop: "14px", fontSize: "13px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
+          <div className="flex flex-col gap-2 border-t border-[var(--line)] pt-3 text-xs sm:text-sm">
+            <div className="flex justify-between">
               <span>Subtotal:</span>
-              <span>{money(subtotal)}</span>
+              <span className="font-medium">{money(subtotal)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
+            <div className="flex justify-between">
               <span>Atelier Shipping:</span>
-              <span>{shipping === 0 ? "FREE" : money(shipping)}</span>
+              <span className="font-medium">{shipping === 0 ? "FREE" : money(shipping)}</span>
             </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: "bold", marginTop: "8px", paddingTop: "8px", borderTop: "1px solid var(--line)" }}>
+            <div className="flex justify-between text-sm sm:text-base font-bold mt-2 pt-2 border-t border-[var(--line)]">
               <span>Grand Total:</span>
               <span style={{ color: "var(--mustard-deep)" }}>{money(total)}</span>
             </div>

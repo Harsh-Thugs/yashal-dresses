@@ -83,16 +83,16 @@ export default function ShopPage({
   }, [selected, activeBrand, sizeSel, maxPrice, sort, query, inStockOnly, products]);
 
   return (
-    <div className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-1">
-        <h1 className="font-display text-2xl md:text-3xl font-semibold">
+    <div className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-8 w-full overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3 mb-1">
+        <h1 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold leading-tight">
           {selected.length === 1 ? selected[0] : "All Garments & Accessories"}
         </h1>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {selected.length === 1 && (
             <button
               onClick={() => { setSelected([]); if (setActiveCategory) setActiveCategory(null); }}
-              className="font-mono text-xs text-[var(--ink)] bg-white border border-[var(--line)] px-3.5 py-1.5 rounded-full hover:bg-[var(--mustard)] hover:text-black font-semibold transition-all shadow-sm flex items-center gap-1"
+              className="font-mono text-xs text-[var(--ink)] bg-white border border-[var(--line)] px-3 sm:px-3.5 py-1.5 rounded-full hover:bg-[var(--mustard)] hover:text-black font-semibold transition-all shadow-sm flex items-center gap-1 cursor-pointer"
             >
               <span>←</span>
               <span>View All Segments</span>
@@ -100,18 +100,18 @@ export default function ShopPage({
           )}
           <button
             onClick={() => setMobileFilters(true)}
-            className="md:hidden flex items-center gap-1.5 font-mono text-xs border border-[var(--line)] rounded px-3 py-1.5 bg-white"
+            className="md:hidden flex items-center gap-1.5 font-mono text-xs border border-[var(--line)] rounded px-3 py-1.5 bg-white shadow-sm cursor-pointer"
           >
             <SlidersHorizontal size={14} /> Filters
           </button>
         </div>
       </div>
 
-      <p className="font-mono text-xs opacity-60 mb-6">
+      <p className="font-mono text-xs opacity-60 mb-4 sm:mb-6">
         {results.length} garment{results.length !== 1 ? "s" : ""}{query ? ` matching "${query}"` : ""}
       </p>
 
-      <div className="grid md:grid-cols-[230px_1fr] gap-8">
+      <div className="grid md:grid-cols-[230px_1fr] gap-6 md:gap-8">
         <div className="hidden md:block">
           <FilterPanel
             categories={categories}
@@ -150,25 +150,25 @@ export default function ShopPage({
           </div>
         )}
 
-        <div>
+        <div className="w-full min-w-0">
           {/* Horizontal Brand Click Buttons Bar */}
-          <div className="mb-5 bg-white/80 border border-[var(--line)] rounded-lg p-2.5 shadow-sm backdrop-blur-sm">
-            <div className="flex items-center gap-2 overflow-x-auto no-scrollbar scroll-smooth">
-              <div className="flex items-center gap-1.5 font-mono text-[11px] font-bold text-gray-500 uppercase tracking-wider shrink-0 px-2 border-r border-gray-200">
+          <div className="mb-4 sm:mb-5 bg-white/80 border border-[var(--line)] rounded-lg p-2 sm:p-2.5 shadow-sm backdrop-blur-sm">
+            <div className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar scroll-smooth py-0.5">
+              <div className="flex items-center gap-1 font-mono text-[10px] sm:text-[11px] font-bold text-gray-500 uppercase tracking-wider shrink-0 px-1.5 sm:px-2 border-r border-gray-200">
                 <span>🏷️ Brands</span>
               </div>
               
               {/* All Brands Button (Default Selected) */}
               <button
                 onClick={() => setActiveBrand("all")}
-                className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold font-mono transition-all flex items-center gap-1.5 ${
+                className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-semibold font-mono transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer ${
                   activeBrand === "all"
                     ? "bg-[var(--ink)] text-[var(--mustard)] shadow font-bold border border-[var(--mustard)]/40"
                     : "bg-white text-gray-700 hover:bg-amber-50 hover:text-black border border-gray-200"
                 }`}
               >
                 <span>All {selected.length === 1 ? selected[0] : ""} Brands</span>
-                <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
+                <span className={`text-[9.5px] sm:text-[10px] px-1.5 py-0.2 rounded-full font-bold ${
                   activeBrand === "all" ? "bg-[var(--mustard)] text-[var(--ink)]" : "bg-gray-100 text-gray-600"
                 }`}>
                   {segmentProducts.length}
@@ -180,14 +180,14 @@ export default function ShopPage({
                 <button
                   key={b.name}
                   onClick={() => setActiveBrand(activeBrand === b.name ? "all" : b.name)}
-                  className={`shrink-0 px-3.5 py-1.5 rounded-full text-xs font-medium transition-all flex items-center gap-1.5 ${
+                  className={`shrink-0 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full text-[11px] sm:text-xs font-medium transition-all flex items-center gap-1 sm:gap-1.5 cursor-pointer ${
                     activeBrand === b.name
                       ? "bg-[var(--ink)] text-[var(--mustard)] shadow font-bold border border-[var(--mustard)] ring-2 ring-[var(--mustard)]/30"
                       : "bg-white text-gray-700 hover:bg-amber-50 hover:text-black border border-gray-200"
                   }`}
                 >
                   <span>{b.name}</span>
-                  <span className={`text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
+                  <span className={`text-[9.5px] sm:text-[10px] font-mono px-1.5 py-0.2 rounded-full font-bold ${
                     activeBrand === b.name ? "bg-[var(--mustard)] text-[var(--ink)]" : "bg-gray-100 text-gray-500"
                   }`}>
                     {b.count}
@@ -198,18 +198,18 @@ export default function ShopPage({
           </div>
 
           {results.length === 0 ? (
-            <div className="text-center py-20 bg-white/40 rounded-lg border border-dashed border-[var(--line)] p-8">
+            <div className="text-center py-16 sm:py-20 bg-white/40 rounded-lg border border-dashed border-[var(--line)] p-6 sm:p-8">
               <p className="font-display text-xl mb-2 font-semibold">No matches on the rack.</p>
               <p className="text-sm opacity-60 mb-4">Try clearing a filter, selecting a different segment, or searching a different term.</p>
               <button
                 onClick={() => { setSelected([]); setSizeSel(null); setMaxPrice(5000); setQuery(""); setInStockOnly(false); }}
-                className="yd-btn yd-btn-outline px-5 py-2.5"
+                className="yd-btn yd-btn-outline px-5 py-2.5 cursor-pointer"
               >
                 Clear all filters
               </button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 md:gap-5">
               {results.map((p, i) => (
                 <ProductCard
                   key={p.id}
@@ -218,6 +218,7 @@ export default function ShopPage({
                   onOpen={onOpen}
                   wishlist={wishlist}
                   toggleWish={toggleWish}
+                  brands={brands}
                 />
               ))}
             </div>

@@ -17,6 +17,7 @@ import InquiryModal from './components/InquiryModal';
 import FloatingInquiryButton from './components/FloatingInquiryButton';
 import Footer from './components/Footer';
 import OrdersPage from './components/OrdersPage';
+import MobileNav from './components/MobileNav';
 
 import {
   INITIAL_CATEGORIES,
@@ -50,6 +51,7 @@ export default function App() {
   const [activeCategory, setActiveCategory] = useState(null);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [query, setQuery] = useState('');
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   // Datasets
   const [products, setProducts] = useState(() => {
@@ -161,28 +163,49 @@ export default function App() {
     };
   }, [firebaseConfig]);
 
-  // Browser Navigation History (pushState / popstate)
+  // URL Hash Synchronizer for Page & Product Routing
   useEffect(() => {
-    const handlePopState = (e) => {
-      if (e.state) {
-        if (e.state.page) setPage(e.state.page);
-        if (e.state.productId) {
-          const p = products.find(prod => prod.id === e.state.productId);
-          if (p) setSelectedProduct(p);
+    const handleHashRouting = () => {
+      const hash = window.location.hash.replace(/^#\/?/, '');
+      if (!hash) {
+        setPage('home');
+        return;
+      }
+      const parts = hash.split('/');
+      const targetPage = parts[0];
+      const prodId = parts.slice(1).join('/');
+
+      const validPages = ['home', 'shop', 'product', 'checkout', 'confirmation', 'admin', 'orders'];
+      if (validPages.includes(targetPage)) {
+        setPage(targetPage);
+        if (targetPage === 'product' && prodId) {
+          const found = products.find(prod => prod.id === prodId);
+          if (found) {
+            setSelectedProduct(found);
+          }
         }
       }
     };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
+
+    // Sync initially on mount
+    handleHashRouting();
+
+    window.addEventListener('hashchange', handleHashRouting);
+    window.addEventListener('popstate', handleHashRouting);
+    return () => {
+      window.removeEventListener('hashchange', handleHashRouting);
+      window.removeEventListener('popstate', handleHashRouting);
+    };
   }, [products]);
 
   const navigateTo = (targetPage, prod = null) => {
     setPage(targetPage);
     if (prod) {
       setSelectedProduct(prod);
-      window.history.pushState({ page: targetPage, productId: prod.id }, '', `#${targetPage}/${prod.id}`);
+      const prodId = typeof prod === 'object' ? prod.id : prod;
+      window.location.hash = `#${targetPage}/${prodId}`;
     } else {
-      window.history.pushState({ page: targetPage }, '', `#${targetPage}`);
+      window.location.hash = `#${targetPage}`;
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
@@ -292,14 +315,26 @@ export default function App() {
     await sendOrderConfirmationEmail(newOrder);
   };
 
-  // Resolve currently active product dynamically so edits in admin reflect immediately
+  // Resolve currently active product dynamically with robust fallback
   const activeProduct = useMemo(() => {
-    if (!selectedProduct) return null;
-    return products.find((p) => p.id === selectedProduct.id) || selectedProduct;
+    if (selectedProduct) {
+      const pId = typeof selectedProduct === 'object' ? selectedProduct.id : selectedProduct;
+      const found = products.find((p) => p.id === pId);
+      if (found) return found;
+      if (typeof selectedProduct === 'object') return selectedProduct;
+    }
+    // If route is on product page without selectedProduct state, check hash or fallback to first product
+    const hash = window.location.hash.replace(/^#\/?/, '');
+    if (hash.startsWith('product/')) {
+      const hId = hash.split('/')[1];
+      const found = products.find((p) => p.id === hId);
+      if (found) return found;
+    }
+    return products[0] || null;
   }, [products, selectedProduct]);
 
   return (
-    <div className="yd-root min-h-screen flex flex-col">
+    <div className="yd-root min-h-screen flex flex-col w-full overflow-x-hidden">
       <BrandStyles />
       <CurtainIntro />
 
@@ -309,11 +344,11 @@ export default function App() {
         setPage={(pg) => navigateTo(pg)}
         query={query}
         setQuery={setQuery}
-        cartCount={cart.reduce((sum, it) => sum + it.qty, 0)}
+        cartCount={cart.reduce((sum, it) => sum + (it.qty || it.quantity || 1), 0)}
         onCartClick={() => setIsCartOpen(true)}
         user={user}
         onLoginClick={() => setIsUserLoginOpen(true)}
-        onMenuClick={() => setIsCartOpen(true)}
+        onMenuClick={() => setIsMobileNavOpen(true)}
         isAdminMode={page === 'admin'}
         setIsAdminMode={(val) => {
           if (val) {
@@ -330,7 +365,7 @@ export default function App() {
       />
 
       {/* Main Content Router */}
-      <main className="flex-1">
+      <main className="flex-1 w-full overflow-x-hidden">
         {page === 'home' && (
           <>
             <Hero
@@ -358,25 +393,25 @@ export default function App() {
             />
 
             {/* Curated Bestsellers Grid */}
-            <section className="max-w-7xl mx-auto px-4 md:px-6 py-12">
-              <div className="flex justify-between items-end mb-8">
+            <section className="max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12">
+              <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-6 sm:mb-8">
                 <div>
                   <span className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest block mb-1">
                     ATELIER SPOTLIGHT
                   </span>
-                  <h2 className="font-display text-2xl md:text-3xl font-semibold">
+                  <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold">
                     Signature Ready-to-Wear
                   </h2>
                 </div>
                 <button
                   onClick={() => navigateTo('shop')}
-                  className="font-mono text-xs text-[var(--ink)] hover:text-[var(--mustard-deep)] font-semibold flex items-center gap-1"
+                  className="font-mono text-xs text-[var(--ink)] hover:text-[var(--mustard-deep)] font-semibold flex items-center gap-1 self-start sm:self-auto"
                 >
                   Explore All 52 Designs →
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6">
                 {(products || []).slice(0, 8).map((p, idx) => (
                   <ProductCard
                     key={p.id}
@@ -414,7 +449,7 @@ export default function App() {
           />
         )}
 
-        {page === 'product' && activeProduct && (
+        {page === 'product' && (
           <ProductPage
             product={activeProduct}
             products={products}
@@ -425,6 +460,10 @@ export default function App() {
             wishlist={wishlist}
             toggleWish={toggleWishlist}
             onOpen={(prod) => navigateTo('product', prod)}
+            onOpenInquiry={(prod) => {
+              setInquiryProduct(prod);
+              setIsInquiryOpen(true);
+            }}
           />
         )}
 
@@ -486,6 +525,22 @@ export default function App() {
           />
         )}
       </main>
+
+      {/* Mobile Segments Menu Drawer */}
+      <MobileNav
+        open={isMobileNavOpen}
+        close={() => setIsMobileNavOpen(false)}
+        categories={categories}
+        setPage={(pg) => {
+          setIsMobileNavOpen(false);
+          navigateTo(pg);
+        }}
+        setActiveCategory={(cat) => {
+          setActiveCategory(cat);
+          setIsMobileNavOpen(false);
+          navigateTo('shop');
+        }}
+      />
 
       {/* Floating Inquiry Button & Modal */}
       <FloatingInquiryButton onClick={() => { setInquiryProduct(null); setIsInquiryOpen(true); }} />
