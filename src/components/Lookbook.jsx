@@ -12,14 +12,14 @@ export default function Lookbook({ products = [], onOpen = () => {}, setPage = (
   const [ref, inView] = useReveal();
 
   return (
-    <section ref={ref} className={`max-w-7xl mx-auto px-4 md:px-6 py-14 reveal ${inView ? "in" : ""}`}>
-      <div className="flex items-end justify-between mb-6">
+    <section ref={ref} className={`max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-14 reveal ${inView ? "in" : ""}`}>
+      <div className="flex items-end justify-between mb-5 sm:mb-6">
         <div>
-          <p className="font-mono text-[11px] tracking-widest yd-mustard">04 · STYLING NOTES</p>
+          <p className="font-mono text-[10.5px] sm:text-[11px] tracking-widest yd-mustard font-bold">04 · STYLING NOTES</p>
           <h2 className="font-display text-2xl md:text-3xl mt-1 font-semibold">The lookbook.</h2>
         </div>
       </div>
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {LOOKS.map((look) => {
           const items = look.items
             .map((n) => (products && products.length > 0 ? products.find((p) => p.name === n) : null))

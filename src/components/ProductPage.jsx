@@ -245,7 +245,7 @@ export default function ProductPage({
                         : "bg-white text-[var(--ink)] border-[var(--line)] hover:border-[var(--mustard)] hover:shadow-sm"
                     }`}
                   >
-                    <div className="flex items-center justify-center gap-1 font-bold text-sm">
+                    <div className="flex items-center justify-center gap-1 font-bold text-xs sm:text-sm">
                       <span>{s}</span>
                       {isSelected ? (
                         <span className="inline-flex items-center justify-center w-3.5 h-3.5 sm:w-4 sm:h-4 rounded-full bg-[var(--mustard)] text-[var(--ink)] text-[9px] sm:text-[10px] font-extrabold ml-0.5">
@@ -266,7 +266,7 @@ export default function ProductPage({
                           : "text-gray-500"
                       }`}
                     >
-                      {out ? "Sold Out" : `${sizeQty} in stock`}
+                      {out ? "Sold Out" : `${sizeQty} left`}
                     </span>
                   </button>
                 );

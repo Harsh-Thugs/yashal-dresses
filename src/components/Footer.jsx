@@ -5,8 +5,8 @@ import { STORE_CONTACT } from "./InquiryModal";
 
 export default function Footer({ setPage, setActiveCategory, onOpenInquiry }) {
   return (
-    <footer className="yd-ink-bg mt-14 border-t border-[var(--mustard)]/30 text-white">
-      <div className="max-w-7xl mx-auto px-4 md:px-6 py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 text-left">
+    <footer className="yd-ink-bg mt-12 sm:mt-14 border-t border-[var(--mustard)]/30 text-white">
+      <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7 md:gap-8 text-left">
         
         {/* Col 1: Brand Info */}
         <div className="space-y-3">
