@@ -15,10 +15,19 @@ export function CheckoutPage({
   user
 }) {
   const items = cart
-    .map((c) => ({ ...c, product: products.find((p) => p.id === c.id) }))
+    .map((c) => {
+      const product = products.find((p) => p.id === c.id);
+      const quantity = Number(c.qty || c.quantity || 1);
+      return {
+        ...c,
+        product,
+        qty: quantity,
+        quantity: quantity
+      };
+    })
     .filter((i) => Boolean(i.product));
 
-  const subtotal = items.reduce((s, i) => s + i.product.price * i.quantity, 0);
+  const subtotal = items.reduce((s, i) => s + (Number(i.product.price) * (i.quantity || 1)), 0);
   const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
   const total = subtotal + shipping;
 
@@ -46,7 +55,8 @@ export function CheckoutPage({
         brand: it.product.brand || "Yashal",
         price: it.product.price,
         size: it.size,
-        quantity: it.quantity,
+        quantity: it.quantity || it.qty || 1,
+        qty: it.quantity || it.qty || 1,
         image: (it.product.images && it.product.images[0]) || it.product.image || null,
       })),
       subtotal,
@@ -421,18 +431,21 @@ export function ConfirmationPage({
             </tr>
           </thead>
           <tbody>
-            {order.items?.map((it, idx) => (
-              <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
-                <td style={{ padding: "10px" }}>
-                  <strong>{it.name}</strong><br />
-                  <span style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Label: {it.brand || "Yashal"}</span>
-                </td>
-                <td style={{ padding: "10px", textAlign: "center" }}>{it.size}</td>
-                <td style={{ padding: "10px", textAlign: "center" }}>{it.quantity}</td>
-                <td style={{ padding: "10px", textAlign: "right" }}>{money(it.price)}</td>
-                <td style={{ padding: "10px", textAlign: "right", fontWeight: "600" }}>{money(it.price * it.quantity)}</td>
-              </tr>
-            ))}
+            {order.items?.map((it, idx) => {
+              const itemQty = Number(it.quantity || it.qty || 1);
+              return (
+                <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
+                  <td style={{ padding: "10px" }}>
+                    <strong>{it.name}</strong><br />
+                    <span style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Label: {it.brand || "Yashal"}</span>
+                  </td>
+                  <td style={{ padding: "10px", textAlign: "center" }}>{it.size}</td>
+                  <td style={{ padding: "10px", textAlign: "center" }}>{itemQty}</td>
+                  <td style={{ padding: "10px", textAlign: "right" }}>{money(it.price)}</td>
+                  <td style={{ padding: "10px", textAlign: "right", fontWeight: "600" }}>{money(it.price * itemQty)}</td>
+                </tr>
+              );
+            })}
             </tbody>
           </table>
         </div>
