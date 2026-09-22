@@ -69,13 +69,13 @@ export function MerchantLoginModal({ open, close, onUnlock }) {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (pin === "Ashish@Yashal" || pin === "Dresses@067" || pin === "1234") {
+    if (pin.trim() === "Dresses@067") {
       onUnlock();
       setPin("");
       setError("");
       close();
     } else {
-      setError("Incorrect Merchant Security PIN. Access denied.");
+      setError("Incorrect Merchant Security Password. Access denied.");
     }
   };
 
@@ -92,7 +92,7 @@ export function MerchantLoginModal({ open, close, onUnlock }) {
           Merchant Passcode
         </h2>
         <p style={{ fontSize: "12px", color: "var(--ink-soft)", lineHeight: "1.5", marginBottom: "20px" }}>
-          Enter authorized atelier PIN (e.g. <code>Ashish@Yashal</code>) to manage live inventory and orders.
+          Enter authorized atelier security password to manage live inventory and orders.
         </p>
 
         <form onSubmit={handleSubmit}>
@@ -100,7 +100,7 @@ export function MerchantLoginModal({ open, close, onUnlock }) {
             type="password"
             value={pin}
             onChange={(e) => { setPin(e.target.value); setError(""); }}
-            placeholder="Enter Workroom PIN"
+            placeholder="Enter Merchant Password"
             autoFocus
             style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)", fontSize: "14px", textAlign: "center", letterSpacing: "2px", marginBottom: "12px" }}
           />
