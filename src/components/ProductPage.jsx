@@ -22,6 +22,8 @@ export default function ProductPage({
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const [mainImgIdx, setMainImgIdx] = useState(0);
+  const [selectedColor, setSelectedColor] = useState(null);
+  const [customActiveImg, setCustomActiveImg] = useState(null);
 
   // Reset product state when a different product is selected
   useEffect(() => {
@@ -30,6 +32,21 @@ export default function ProductPage({
     setQty(1);
     setAdded(false);
     setMainImgIdx(0);
+    setCustomActiveImg(null);
+
+    if (Array.isArray(product?.colors) && product.colors.length > 0) {
+      setSelectedColor(product.colors[0]);
+      if (product.colors[0].image) {
+        const matchIdx = (product.images || []).findIndex(img => img === product.colors[0].image);
+        if (matchIdx !== -1) {
+          setMainImgIdx(matchIdx);
+        } else {
+          setCustomActiveImg(product.colors[0].image);
+        }
+      }
+    } else {
+      setSelectedColor(null);
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [product?.id]);
 
@@ -64,7 +81,29 @@ export default function ProductPage({
   const productImages = (Array.isArray(product.images) && product.images.length > 0)
     ? product.images
     : (product.image ? [product.image] : []);
-  const activeImgSrc = productImages[mainImgIdx] || productImages[0];
+
+  const activeImgSrc = customActiveImg || productImages[mainImgIdx] || productImages[0];
+
+  const handleSelectColor = (col, idx) => {
+    setSelectedColor(col);
+    if (col.image) {
+      const matchIdx = productImages.findIndex(img => img === col.image);
+      if (matchIdx !== -1) {
+        setMainImgIdx(matchIdx);
+        setCustomActiveImg(null);
+      } else {
+        setCustomActiveImg(col.image);
+      }
+    } else if (productImages[idx]) {
+      setMainImgIdx(idx);
+      setCustomActiveImg(null);
+    }
+  };
+
+  const handleSelectThumb = (idx) => {
+    setMainImgIdx(idx);
+    setCustomActiveImg(null);
+  };
 
   return (
     <div className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-5 sm:py-8 overflow-x-hidden min-w-0">
@@ -81,20 +120,24 @@ export default function ProductPage({
       </div>
 
       <div className="grid md:grid-cols-2 gap-10">
-        {/* Left: Product Media / Multi-Photo Gallery */}
+        {/* Left: Product Media / Multi-Photo Gallery (464x560 pixels proportion) */}
         <div className="space-y-3">
           <div className="tag-card relative overflow-hidden group">
             <div className="tag-hole" />
-            {productImages.length > 0 ? (
-              <div className="relative h-80 md:h-[460px] w-full bg-white flex items-center justify-center overflow-hidden">
+            {productImages.length > 0 || customActiveImg ? (
+              <div
+                className="relative w-full bg-white flex items-center justify-center overflow-hidden"
+                style={{ aspectRatio: '464 / 560' }}
+              >
                 <img
                   src={activeImgSrc}
-                  alt={`${product.name} - Photo ${mainImgIdx + 1}`}
+                  alt={`${product.name} - ${selectedColor?.name || 'Photo'}`}
                   className="w-full h-full object-cover transition-all duration-300"
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                 />
 
                 {/* Navigation Arrows for Multi-Photo */}
-                {productImages.length > 1 && (
+                {productImages.length > 1 && !customActiveImg && (
                   <>
                     <button
                       type="button"
@@ -135,7 +178,7 @@ export default function ProductPage({
                 )}
               </div>
             ) : (
-              <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="h-80 md:h-[460px] w-full" />
+              <Swatch p={{ ...product, inStock: !isProductOutOfStock }} className="w-full" style={{ aspectRatio: '464 / 560' }} />
             )}
           </div>
 
@@ -146,9 +189,9 @@ export default function ProductPage({
                 <button
                   key={idx}
                   type="button"
-                  onClick={() => setMainImgIdx(idx)}
+                  onClick={() => handleSelectThumb(idx)}
                   className={`relative w-16 h-16 shrink-0 rounded-lg overflow-hidden border-2 transition-all cursor-pointer ${
-                    mainImgIdx === idx
+                    !customActiveImg && mainImgIdx === idx
                       ? 'border-[var(--mustard)] ring-2 ring-[var(--mustard)]/50 scale-105 shadow-md'
                       : 'border-gray-200 opacity-70 hover:opacity-100'
                   }`}
@@ -191,6 +234,57 @@ export default function ProductPage({
           </div>
 
           <p className="text-sm opacity-75 mt-5 max-w-md leading-relaxed">{product.desc}</p>
+
+          {/* Colour Selector */}
+          {Array.isArray(product.colors) && product.colors.length > 0 && (
+            <div className="mt-5">
+              <div className="flex items-center justify-between mb-2.5">
+                <p className="font-mono text-[11px] tracking-widest font-bold opacity-80 flex items-center gap-1.5">
+                  <span>SELECT COLOUR</span>
+                  {selectedColor && (
+                    <span className="text-xs text-[var(--mustard-deep)] font-sans font-bold">
+                      • {selectedColor.name}
+                    </span>
+                  )}
+                </p>
+                <span className="text-[10px] font-mono opacity-50">Click to switch garment photo</span>
+              </div>
+
+              <div className="flex flex-wrap gap-2.5">
+                {product.colors.map((col, cIdx) => {
+                  const isSelected = selectedColor?.name === col.name;
+                  return (
+                    <button
+                      key={cIdx}
+                      type="button"
+                      onClick={() => handleSelectColor(col, cIdx)}
+                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-[var(--ink)] text-[var(--ivory)] border-[var(--mustard)] shadow-md ring-2 ring-[var(--mustard)]/40 font-bold"
+                          : "bg-white text-[var(--ink)] border-[var(--line)] hover:border-[var(--mustard)] hover:shadow-sm"
+                      }`}
+                    >
+                      <span
+                        style={{
+                          width: '16px',
+                          height: '16px',
+                          borderRadius: '50%',
+                          backgroundColor: col.hex || '#1B2A4A',
+                          border: isSelected ? '1.5px solid var(--mustard)' : '1px solid rgba(0,0,0,0.2)',
+                          display: 'inline-block',
+                          flexShrink: 0
+                        }}
+                      />
+                      <span className="text-xs">{col.name}</span>
+                      {isSelected && (
+                        <span className="text-[var(--mustard)] text-[10px] font-bold">✓</span>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Size Selector */}
           <div className="mt-6">
@@ -307,7 +401,7 @@ export default function ProductPage({
                   return;
                 }
                 setSizeError("");
-                addToCart(product, size, qty);
+                addToCart(product, size, qty, selectedColor?.name || null);
                 setAdded(true);
                 setTimeout(() => setAdded(false), 1800);
               }}

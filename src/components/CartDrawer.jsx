@@ -62,21 +62,23 @@ export default function CartDrawer({ open, close, cart, products, updateQty, rem
           <>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3 yd-scroll">
               {items.map((i) => (
-                <div key={i.id + i.size} className="flex gap-3 tag-card p-3 items-center">
-                  <Swatch p={i.product} className="w-20 h-20 rounded shrink-0" />
+                <div key={i.id + i.size + (i.color || '')} className="flex gap-3 tag-card p-3 items-center">
+                  <Swatch p={i.product} className="w-16 h-20 rounded shrink-0" style={{ aspectRatio: '464 / 560' }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium truncate">{i.product.name}</p>
-                    <p className="font-mono text-[10px] opacity-55 mt-0.5">SIZE {i.size}</p>
+                    <p className="font-mono text-[10px] opacity-55 mt-0.5">
+                      SIZE {i.size}{i.color ? ` · COLOUR: ${i.color}` : ''}
+                    </p>
                     <div className="flex items-center justify-between mt-2">
                       <div className="flex items-center border border-[var(--line)] rounded bg-white">
-                        <button onClick={() => updateQty(i.id, i.size, -1)} className="p-1 hover:bg-black/5"><Minus size={12} /></button>
+                        <button onClick={() => updateQty(i.id, -1, i.size, i.color)} className="p-1 hover:bg-black/5"><Minus size={12} /></button>
                         <span className="px-2.5 text-xs font-mono font-semibold">{i.qty}</span>
-                        <button onClick={() => updateQty(i.id, i.size, 1)} className="p-1 hover:bg-black/5"><Plus size={12} /></button>
+                        <button onClick={() => updateQty(i.id, 1, i.size, i.color)} className="p-1 hover:bg-black/5"><Plus size={12} /></button>
                       </div>
                       <span className="text-sm font-semibold">{money(i.product.price * i.qty)}</span>
                     </div>
                   </div>
-                  <button onClick={() => removeItem(i.id, i.size)} className="self-start opacity-40 hover:opacity-100 p-1">
+                  <button onClick={() => removeItem(i.id, i.size, i.color)} className="self-start opacity-40 hover:opacity-100 p-1">
                     <Trash2 size={15} color="var(--oxblood)" />
                   </button>
                 </div>

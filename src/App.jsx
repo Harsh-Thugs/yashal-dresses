@@ -33,7 +33,12 @@ import {
   deleteProductFromFirestore,
   saveOrderToFirestore,
   seedFirestoreCatalog,
-  sendOrderConfirmationEmail
+  sendOrderConfirmationEmail,
+  saveCategoryToFirestore,
+  deleteCategoryFromFirestore,
+  saveBrandToFirestore,
+  deleteBrandFromFirestore,
+  syncCategoriesToFirestore
 } from './utils/firebase';
 
 import {
@@ -188,35 +193,64 @@ export default function App() {
   };
 
   // Cart Handlers
-  const addToCart = (product, size = 'M', qty = 1) => {
+  const addToCart = (product, size = 'M', qty = 1, color = null) => {
     setCart((prev) => {
-      const idx = prev.findIndex((i) => i.id === product.id && i.size === size);
+      const idx = prev.findIndex((i) => i.id === product.id && i.size === size && (i.color || null) === (color || null));
       if (idx > -1) {
         const updated = [...prev];
         updated[idx].qty += qty;
         return updated;
       }
-      return [...prev, { id: product.id, size, qty }];
+      return [...prev, { id: product.id, size, qty, color: color || null }];
     });
     setIsCartOpen(true);
   };
 
-  const updateCartQty = (id, size, delta) => {
+  const updateCartQty = (id, size, delta, color = null) => {
     setCart((prev) => {
       return prev
-        .map((i) => (i.id === id && i.size === size ? { ...i, qty: i.qty + delta } : i))
+        .map((i) => (i.id === id && i.size === size && (i.color || null) === (color || null) ? { ...i, qty: i.qty + delta } : i))
         .filter((i) => i.qty > 0);
     });
   };
 
-  const removeCartItem = (id, size) => {
-    setCart((prev) => prev.filter((i) => !(i.id === id && i.size === size)));
+  const removeCartItem = (id, size, color = null) => {
+    setCart((prev) => prev.filter((i) => !(i.id === id && i.size === size && (i.color || null) === (color || null))));
   };
 
   const toggleWishlist = (productId) => {
     setWishlist((prev) =>
       prev.includes(productId) ? prev.filter((id) => id !== productId) : [...prev, productId]
     );
+  };
+
+  // Admin Category & Brand Handlers
+  const handleSaveCategory = async (newCategory) => {
+    setCategories((prev) => {
+      const exists = prev.some((c) => c.name.toLowerCase() === newCategory.name.toLowerCase());
+      if (exists) return prev;
+      return [...prev, newCategory];
+    });
+    await saveCategoryToFirestore(newCategory);
+  };
+
+  const handleDeleteCategory = async (categoryName) => {
+    setCategories((prev) => prev.filter((c) => c.name !== categoryName));
+    await deleteCategoryFromFirestore(categoryName);
+  };
+
+  const handleSaveBrand = async (newBrand) => {
+    setBrands((prev) => {
+      const exists = prev.some((b) => b.name.toLowerCase() === newBrand.name.toLowerCase());
+      if (exists) return prev;
+      return [...prev, newBrand];
+    });
+    await saveBrandToFirestore(newBrand);
+  };
+
+  const handleDeleteBrand = async (brandName) => {
+    setBrands((prev) => prev.filter((b) => b.name !== brandName));
+    await deleteBrandFromFirestore(brandName);
   };
 
   // Admin Product Handlers
@@ -484,8 +518,12 @@ export default function App() {
               setProducts={setProducts}
               categories={categories}
               setCategories={setCategories}
+              onSaveCategory={handleSaveCategory}
+              onDeleteCategory={handleDeleteCategory}
               brands={brands}
               setBrands={setBrands}
+              onSaveBrand={handleSaveBrand}
+              onDeleteBrand={handleDeleteBrand}
               orders={orders}
               onLogout={() => {
                 setIsAdminUnlocked(false);
@@ -539,8 +577,8 @@ export default function App() {
         close={() => setIsCartOpen(false)}
         cart={cart}
         products={products}
-        updateQty={(id, delta, size) => updateCartQty(id, size, delta)}
-        removeItem={(id, size) => removeCartItem(id, size)}
+        updateQty={(id, delta, size, color) => updateCartQty(id, size, delta, color)}
+        removeItem={(id, size, color) => removeCartItem(id, size, color)}
         setPage={(pg) => {
           setIsCartOpen(false);
           navigateTo(pg);

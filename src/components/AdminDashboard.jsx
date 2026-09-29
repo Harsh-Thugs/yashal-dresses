@@ -14,8 +14,12 @@ export default function AdminDashboard({
   setProducts,
   categories,
   setCategories,
+  onSaveCategory,
+  onDeleteCategory,
   brands,
   setBrands,
+  onSaveBrand,
+  onDeleteBrand,
   orders,
   onLogout,
   onOpenAddBrandModal,
@@ -40,6 +44,15 @@ export default function AdminDashboard({
   // Category / Brand creation state
   const [newCatName, setNewCatName] = useState('');
   const [newBrandName, setNewBrandName] = useState('');
+
+  // Inline Category quick-add in Garment Modal
+  const [showInlineCatInput, setShowInlineCatInput] = useState(false);
+  const [inlineCatName, setInlineCatName] = useState('');
+
+  // Garment Color Option state inside Garment Modal
+  const [newColorName, setNewColorName] = useState('');
+  const [newColorHex, setNewColorHex] = useState('#1B2A4A');
+  const [newColorImg, setNewColorImg] = useState('');
 
   // Firebase config input state
   const [configText, setConfigText] = useState(() => JSON.stringify(firebaseConfig, null, 2));
@@ -66,6 +79,7 @@ export default function AdminDashboard({
     stock: { S: 5, M: 8, L: 6, XL: 4, XXL: 2 },
     images: [],
     image: null,
+    colors: [],
   });
 
   const [isUploading, setIsUploading] = useState(false);
@@ -73,6 +87,12 @@ export default function AdminDashboard({
 
   // Sync formData when editingProduct opens
   React.useEffect(() => {
+    setShowInlineCatInput(false);
+    setInlineCatName('');
+    setNewColorName('');
+    setNewColorHex('#1B2A4A');
+    setNewColorImg('');
+
     if (editingProduct) {
       const imgs = Array.isArray(editingProduct.images) && editingProduct.images.length > 0
         ? [...editingProduct.images]
@@ -83,6 +103,8 @@ export default function AdminDashboard({
       availableSizes.forEach(s => {
         if (curStock[s] === undefined) curStock[s] = 5;
       });
+
+      const cols = Array.isArray(editingProduct.colors) ? [...editingProduct.colors] : [];
 
       setFormData({
         id: editingProduct.id || '',
@@ -99,6 +121,7 @@ export default function AdminDashboard({
         stock: curStock,
         images: imgs,
         image: imgs[0] || editingProduct.image || null,
+        colors: cols,
       });
     } else {
       const defaultCat = categories[0]?.name || 'Formal Shirts';
@@ -121,9 +144,133 @@ export default function AdminDashboard({
         stock: defStock,
         images: [],
         image: null,
+        colors: [],
       });
     }
   }, [editingProduct, isProductModalOpen, categories, brands]);
+
+  // Segment Handlers
+  const handleAddCategory = async () => {
+    const trimmed = newCatName.trim();
+    if (!trimmed) {
+      alert("Please enter a segment name.");
+      return;
+    }
+    if (categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Segment "${trimmed}" already exists!`);
+      return;
+    }
+    const newCatObj = { name: trimmed, icon: 'Shirt' };
+    if (onSaveCategory) {
+      await onSaveCategory(newCatObj);
+    } else {
+      setCategories([...categories, newCatObj]);
+    }
+    setNewCatName('');
+    alert(`✓ Segment "${trimmed}" successfully added!`);
+  };
+
+  const handleRemoveCategory = async (c, count) => {
+    if (count > 0) {
+      alert(`Cannot remove "${c.name}" because it still has ${count} garments.`);
+      return;
+    }
+    if (window.confirm(`Are you sure you want to remove segment "${c.name}"?`)) {
+      if (onDeleteCategory) {
+        await onDeleteCategory(c.name);
+      } else {
+        setCategories(categories.filter(cat => cat.name !== c.name));
+      }
+    }
+  };
+
+  // Brand Handlers
+  const handleAddBrand = async () => {
+    const trimmed = newBrandName.trim();
+    if (!trimmed) {
+      alert("Please enter a brand name.");
+      return;
+    }
+    if (brands.some(b => b.name.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Brand "${trimmed}" already exists!`);
+      return;
+    }
+    const newBrandObj = { name: trimmed };
+    if (onSaveBrand) {
+      await onSaveBrand(newBrandObj);
+    } else {
+      setBrands([...brands, newBrandObj]);
+    }
+    setNewBrandName('');
+    alert(`✓ Brand "${trimmed}" successfully added!`);
+  };
+
+  const handleRemoveBrand = async (b) => {
+    if (window.confirm(`Are you sure you want to remove brand "${b.name}"?`)) {
+      if (onDeleteBrand) {
+        await onDeleteBrand(b.name);
+      } else {
+        setBrands(brands.filter(brand => brand.name !== b.name));
+      }
+    }
+  };
+
+  // Inline Category creation in Garment Modal
+  const handleCreateInlineCategory = async () => {
+    const trimmed = inlineCatName.trim();
+    if (!trimmed) return;
+    if (categories.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      const match = categories.find(c => c.name.toLowerCase() === trimmed.toLowerCase());
+      setFormData(prev => ({ ...prev, category: match.name }));
+      setShowInlineCatInput(false);
+      setInlineCatName('');
+      return;
+    }
+    const newCatObj = { name: trimmed, icon: 'Shirt' };
+    if (onSaveCategory) {
+      await onSaveCategory(newCatObj);
+    } else {
+      setCategories(prev => [...prev, newCatObj]);
+    }
+    const newSizes = sizesFor(trimmed);
+    const newStock = {};
+    newSizes.forEach(s => { newStock[s] = formData.stock[s] || 5; });
+    setFormData(prev => ({ ...prev, category: trimmed, stock: newStock }));
+    setShowInlineCatInput(false);
+    setInlineCatName('');
+  };
+
+  // Color management in Garment Modal
+  const handleAddColor = () => {
+    const trimmed = newColorName.trim();
+    if (!trimmed) {
+      alert("Please write a colour name (e.g. Royal Blue, Maroon, Olive Green).");
+      return;
+    }
+    const existing = formData.colors || [];
+    if (existing.some(c => c.name.toLowerCase() === trimmed.toLowerCase())) {
+      alert(`Colour "${trimmed}" is already added.`);
+      return;
+    }
+    const newEntry = {
+      name: trimmed,
+      hex: newColorHex || '#1B2A4A',
+      image: newColorImg || null
+    };
+    setFormData(prev => ({
+      ...prev,
+      colors: [...(prev.colors || []), newEntry]
+    }));
+    setNewColorName('');
+    setNewColorImg('');
+  };
+
+  const handleRemoveColor = (idx) => {
+    setFormData(prev => ({
+      ...prev,
+      colors: (prev.colors || []).filter((_, i) => i !== idx)
+    }));
+  };
 
   // Metrics calculation
   const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.total) || 0), 0);
@@ -437,7 +584,7 @@ export default function AdminDashboard({
                         <tr key={p.id} style={{ borderBottom: '1px solid var(--line)', transition: 'background 0.15s ease' }}>
                           <td style={{ padding: '12px 16px' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                              <div style={{ width: '44px', height: '44px', borderRadius: '4px', overflow: 'hidden', background: 'var(--parchment)', flexShrink: 0, position: 'relative' }}>
+                              <div style={{ width: '44px', height: '53px', borderRadius: '4px', overflow: 'hidden', background: 'var(--parchment)', flexShrink: 0, position: 'relative' }}>
                                 {imgs[0] ? (
                                   <img src={imgs[0]} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                 ) : (
@@ -448,9 +595,14 @@ export default function AdminDashboard({
                               </div>
                               <div>
                                 <div style={{ fontWeight: '600', color: 'var(--ink)' }}>{p.name}</div>
-                                <div style={{ fontSize: '11px', color: 'var(--ink-soft)', display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <div style={{ fontSize: '11px', color: 'var(--ink-soft)', display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
                                   <span>{p.brand}</span> • <span>SKU: {p.id}</span>
                                   {imgs.length > 0 && <span style={{ color: 'var(--mustard-deep)' }}>📷 {imgs.length} photo(s)</span>}
+                                  {Array.isArray(p.colors) && p.colors.length > 0 && (
+                                    <span style={{ color: '#8A6A12', background: 'rgba(212,175,55,0.15)', padding: '1px 6px', borderRadius: '4px', fontWeight: 'bold' }}>
+                                      🎨 {p.colors.length} colour(s)
+                                    </span>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -568,7 +720,7 @@ export default function AdminDashboard({
                       <td style={{ padding: '14px 16px' }}>
                         {o.items?.map((it, idx) => (
                           <div key={idx} style={{ fontSize: '12px', marginBottom: '4px' }}>
-                            • <strong>{it.name}</strong> <span style={{ color: 'var(--ink-soft)' }}>({it.size} × {it.quantity})</span>
+                            • <strong>{it.name}</strong> <span style={{ color: 'var(--ink-soft)' }}>({it.size}{it.color ? ` · ${it.color}` : ''} × {it.quantity})</span>
                           </div>
                         ))}
                       </td>
@@ -594,7 +746,7 @@ export default function AdminDashboard({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '24px' }}>
             <div style={{ background: 'var(--ivory)', border: '1px solid var(--line)', padding: '20px', borderRadius: '8px' }}>
               <h3 style={{ margin: '0 0 16px 0', fontSize: '16px' }}>Active Segments ({categories.length})</h3>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '480px', overflowY: 'auto' }}>
                 {categories.map((c, idx) => {
                   const count = products.filter(p => p.category === c.name).length;
                   return (
@@ -604,13 +756,7 @@ export default function AdminDashboard({
                         <span style={{ fontSize: '11px', color: 'var(--ink-soft)', marginLeft: '8px' }}>({count} garments)</span>
                       </div>
                       <button
-                        onClick={() => {
-                          if (count > 0) {
-                            alert(`Cannot remove "${c.name}" because it still has ${count} garments.`);
-                            return;
-                          }
-                          setCategories(categories.filter(cat => cat.name !== c.name));
-                        }}
+                        onClick={() => handleRemoveCategory(c, count)}
                         style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}
                       >
                         Remove
@@ -628,19 +774,11 @@ export default function AdminDashboard({
                 placeholder="Segment name (e.g. Linen Kurtas, Nehru Jackets)..."
                 value={newCatName}
                 onChange={e => setNewCatName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddCategory(); } }}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)', marginBottom: '14px' }}
               />
               <button
-                onClick={() => {
-                  if (newCatName.trim()) {
-                    if (categories.some(c => c.name.toLowerCase() === newCatName.trim().toLowerCase())) {
-                      alert("Segment already exists!");
-                    } else {
-                      setCategories([...categories, { name: newCatName.trim(), icon: 'Shirt' }]);
-                      setNewCatName('');
-                    }
-                  }
-                }}
+                onClick={handleAddCategory}
                 className="yd-btn yd-btn-primary"
                 style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--ivory)' }}
               >
@@ -665,9 +803,7 @@ export default function AdminDashboard({
                         <span style={{ fontSize: '11px', color: 'var(--ink-soft)', marginLeft: '8px' }}>({count} garments)</span>
                       </div>
                       <button
-                        onClick={() => {
-                          setBrands(brands.filter(brand => brand.name !== b.name));
-                        }}
+                        onClick={() => handleRemoveBrand(b)}
                         style={{ border: 'none', background: 'transparent', color: '#ef4444', cursor: 'pointer', fontSize: '12px' }}
                       >
                         Remove
@@ -685,19 +821,11 @@ export default function AdminDashboard({
                 placeholder="Brand name (e.g. Raymond, Manyavar)..."
                 value={newBrandName}
                 onChange={e => setNewBrandName(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddBrand(); } }}
                 style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)', marginBottom: '14px' }}
               />
               <button
-                onClick={() => {
-                  if (newBrandName.trim()) {
-                    if (brands.some(b => b.name.toLowerCase() === newBrandName.trim().toLowerCase())) {
-                      alert("Brand already exists!");
-                    } else {
-                      setBrands([...brands, { name: newBrandName.trim() }]);
-                      setNewBrandName('');
-                    }
-                  }
-                }}
+                onClick={handleAddBrand}
                 className="yd-btn yd-btn-primary"
                 style={{ width: '100%', padding: '10px', background: 'var(--ink)', color: 'var(--ivory)' }}
               >
@@ -863,20 +991,60 @@ export default function AdminDashboard({
               </div>
 
               <div>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '6px' }}>Segment / Category</label>
-                <select
-                  value={formData.category}
-                  onChange={e => {
-                    const newCat = e.target.value;
-                    const newSizes = sizesFor(newCat);
-                    const newStock = {};
-                    newSizes.forEach(s => { newStock[s] = formData.stock[s] || 5; });
-                    setFormData({ ...formData, category: newCat, stock: newStock });
-                  }}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)' }}
-                >
-                  {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
-                </select>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '6px' }}>
+                  <label style={{ fontSize: '12px', fontWeight: '600' }}>Segment / Category</label>
+                  <button
+                    type="button"
+                    onClick={() => setShowInlineCatInput(!showInlineCatInput)}
+                    style={{ background: 'none', border: 'none', color: 'var(--mustard-deep)', fontSize: '11px', fontWeight: 'bold', cursor: 'pointer' }}
+                  >
+                    {showInlineCatInput ? 'Cancel' : '+ New Segment'}
+                  </button>
+                </div>
+                {!showInlineCatInput ? (
+                  <select
+                    value={formData.category}
+                    onChange={e => {
+                      if (e.target.value === '__add_new__') {
+                        setShowInlineCatInput(true);
+                        return;
+                      }
+                      const newCat = e.target.value;
+                      const newSizes = sizesFor(newCat);
+                      const newStock = {};
+                      newSizes.forEach(s => { newStock[s] = formData.stock[s] || 5; });
+                      setFormData({ ...formData, category: newCat, stock: newStock });
+                    }}
+                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)' }}
+                  >
+                    {categories.map(c => <option key={c.name} value={c.name}>{c.name}</option>)}
+                    <option value="__add_new__">+ Add New Segment...</option>
+                  </select>
+                ) : (
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Enter new segment name..."
+                      value={inlineCatName}
+                      onChange={e => setInlineCatName(e.target.value)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleCreateInlineCategory();
+                        }
+                      }}
+                      style={{ flex: 1, padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)' }}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleCreateInlineCategory}
+                      className="yd-btn yd-btn-primary"
+                      style={{ padding: '0 14px', background: 'var(--ink)', color: 'var(--ivory)' }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
@@ -929,7 +1097,7 @@ export default function AdminDashboard({
             <div style={{ marginTop: '20px', padding: '16px', background: 'var(--parchment)', borderRadius: '8px', border: '1px solid var(--line)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                 <label style={{ fontSize: '12px', fontWeight: '700' }}>
-                  GARMENT PHOTOS (CLOUDINARY CDN)
+                  GARMENT PHOTOS (464×560 PIXELS PROPORTION)
                 </label>
                 <label style={{ cursor: 'pointer', background: 'var(--ink)', color: 'var(--ivory)', padding: '6px 14px', borderRadius: '4px', fontSize: '12px', display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
                   <Upload size={14} color="var(--mustard)" /> Upload Photos
@@ -946,7 +1114,7 @@ export default function AdminDashboard({
               {formData.images && formData.images.length > 0 ? (
                 <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '6px' }}>
                   {formData.images.map((imgUrl, idx) => (
-                    <div key={idx} style={{ position: 'relative', width: '90px', height: '110px', borderRadius: '6px', overflow: 'hidden', border: idx === 0 ? '2px solid var(--mustard)' : '1px solid var(--line)', flexShrink: 0 }}>
+                    <div key={idx} style={{ position: 'relative', width: '90px', height: '109px', borderRadius: '6px', overflow: 'hidden', border: idx === 0 ? '2px solid var(--mustard)' : '1px solid var(--line)', flexShrink: 0 }}>
                       <img src={imgUrl} alt={`Garment ${idx}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                       {idx === 0 && (
                         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, background: 'var(--mustard)', color: 'var(--ink)', fontSize: '9px', fontWeight: 'bold', textAlign: 'center', padding: '1px 0' }}>
@@ -968,9 +1136,142 @@ export default function AdminDashboard({
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '20px', color: 'var(--ink-soft)', fontSize: '12px', border: '1px dashed var(--line)', borderRadius: '6px' }}>
-                  No photos attached yet. Upload real garment pictures to host them on Cloudinary CDN.
+                  No photos attached yet. Upload 464×560 px garment pictures to host them on Cloudinary CDN.
                 </div>
               )}
+            </div>
+
+            {/* Garment Colour Options Section */}
+            <div style={{ marginTop: '20px', padding: '16px', background: 'var(--parchment)', borderRadius: '8px', border: '1px solid var(--line)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <label style={{ fontSize: '12px', fontWeight: '700' }}>
+                  🎨 GARMENT COLOUR OPTIONS ({formData.colors?.length || 0})
+                </label>
+                <span style={{ fontSize: '11px', color: 'var(--ink-soft)' }}>
+                  Patrons can click colour buttons to switch photos
+                </span>
+              </div>
+
+              {/* Added Colours Badges */}
+              {formData.colors && formData.colors.length > 0 ? (
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', marginBottom: '14px' }}>
+                  {formData.colors.map((col, cIdx) => (
+                    <div
+                      key={cIdx}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        background: 'var(--ivory)',
+                        border: '1px solid var(--line)',
+                        borderRadius: '6px',
+                        padding: '6px 10px',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.05)'
+                      }}
+                    >
+                      <span
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          borderRadius: '50%',
+                          backgroundColor: col.hex || '#1B2A4A',
+                          border: '1.5px solid rgba(0,0,0,0.2)',
+                          display: 'inline-block',
+                          flexShrink: 0
+                        }}
+                      />
+                      <span style={{ fontSize: '12px', fontWeight: '600', color: 'var(--ink)' }}>{col.name}</span>
+                      {col.image && (
+                        <img
+                          src={col.image}
+                          alt={col.name}
+                          style={{ width: '22px', height: '26px', objectFit: 'cover', borderRadius: '3px', border: '1px solid var(--mustard)' }}
+                          title="Assigned photo"
+                        />
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveColor(cIdx)}
+                        style={{ background: 'none', border: 'none', color: '#ef4444', fontSize: '12px', cursor: 'pointer', padding: '2px 4px' }}
+                        title="Remove colour"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p style={{ fontSize: '11.5px', color: 'var(--ink-soft)', marginBottom: '12px', fontStyle: 'italic' }}>
+                  No colour options added yet. Type a colour name below to add colours to this garment.
+                </p>
+              )}
+
+              {/* Add New Colour Input Row */}
+              <div style={{ background: 'var(--ivory)', padding: '12px', borderRadius: '6px', border: '1px dashed var(--line)' }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(130px, 1fr))', gap: '10px', alignItems: 'end' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>
+                      Write Colour Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Navy Blue, Maroon..."
+                      value={newColorName}
+                      onChange={e => setNewColorName(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAddColor(); } }}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--parchment)', fontSize: '12px' }}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>
+                      Colour Swatch
+                    </label>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <input
+                        type="color"
+                        value={newColorHex}
+                        onChange={e => setNewColorHex(e.target.value)}
+                        style={{ width: '36px', height: '34px', padding: '1px', border: '1px solid var(--line)', borderRadius: '4px', cursor: 'pointer', background: 'transparent' }}
+                      />
+                      <input
+                        type="text"
+                        value={newColorHex}
+                        onChange={e => setNewColorHex(e.target.value)}
+                        placeholder="#1B2A4A"
+                        style={{ width: '75px', padding: '8px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--parchment)', fontSize: '11px', fontFamily: 'monospace' }}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '11px', fontWeight: '600', marginBottom: '4px' }}>
+                      Linked Picture
+                    </label>
+                    <select
+                      value={newColorImg}
+                      onChange={e => setNewColorImg(e.target.value)}
+                      style={{ width: '100%', padding: '8px 10px', borderRadius: '4px', border: '1px solid var(--line)', background: 'var(--parchment)', fontSize: '12px' }}
+                    >
+                      <option value="">Default / Cover</option>
+                      {formData.images.map((img, idx) => (
+                        <option key={idx} value={img}>Photo {idx + 1} ({idx === 0 ? 'Cover' : `Photo ${idx + 1}`})</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <button
+                      type="button"
+                      onClick={handleAddColor}
+                      className="yd-btn yd-btn-primary"
+                      style={{ width: '100%', padding: '9px 12px', background: 'var(--ink)', color: 'var(--ivory)', fontSize: '11px' }}
+                    >
+                      + Add Colour
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Modal Actions */}
@@ -993,6 +1294,7 @@ export default function AdminDashboard({
                     ...formData,
                     inStock: totalStock > 0,
                     image: formData.images[0] || null,
+                    colors: formData.colors || [],
                   };
                   onSaveProduct(updatedProd);
                   setIsProductModalOpen(false);

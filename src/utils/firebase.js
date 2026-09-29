@@ -380,6 +380,75 @@ export async function syncCategoriesToFirestore(categories) {
 }
 
 /**
+ * Saves a single category to Firestore.
+ */
+export async function saveCategoryToFirestore(category) {
+  const { db, isLive } = getFirebaseInstance();
+  if (!isLive || !db || !category?.name) return false;
+  try {
+    const docId = category.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docRef = doc(db, "yd_categories", docId);
+    await setDoc(docRef, category, { merge: true });
+    return true;
+  } catch (err) {
+    console.error("Failed to save category to Firestore:", err);
+    return false;
+  }
+}
+
+/**
+ * Deletes a single category from Firestore.
+ */
+export async function deleteCategoryFromFirestore(categoryName) {
+  const { db, isLive } = getFirebaseInstance();
+  if (!isLive || !db || !categoryName) return false;
+  try {
+    const docId = categoryName.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docRef = doc(db, "yd_categories", docId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error("Failed to delete category from Firestore:", err);
+    return false;
+  }
+}
+
+/**
+ * Saves a single brand to Firestore.
+ */
+export async function saveBrandToFirestore(brand) {
+  const { db, isLive } = getFirebaseInstance();
+  if (!isLive || !db || !brand?.name) return false;
+  try {
+    const docId = brand.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docRef = doc(db, "yd_brands", docId);
+    await setDoc(docRef, brand, { merge: true });
+    return true;
+  } catch (err) {
+    console.error("Failed to save brand to Firestore:", err);
+    return false;
+  }
+}
+
+/**
+ * Deletes a single brand from Firestore.
+ */
+export async function deleteBrandFromFirestore(brandName) {
+  const { db, isLive } = getFirebaseInstance();
+  if (!isLive || !db || !brandName) return false;
+  try {
+    const docId = brandName.replace(/[^a-zA-Z0-9_-]/g, "_");
+    const docRef = doc(db, "yd_brands", docId);
+    await deleteDoc(docRef);
+    return true;
+  } catch (err) {
+    console.error("Failed to delete brand from Firestore:", err);
+    return false;
+  }
+}
+
+
+/**
  * Saves a completed order to Firestore.
  */
 export async function saveOrderToFirestore(order) {

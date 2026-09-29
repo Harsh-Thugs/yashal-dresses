@@ -418,19 +418,23 @@ export function AnimatedSwingTag({ size = 64 }) {
 }
 
 /* -------------------------------- SWATCH ---------------------------------- */
-export function Swatch({ p, className = "" }) {
-  if (!p) return <div className={`bg-gray-200 ${className}`} />;
+export function Swatch({ p, className = "", style = {} }) {
+  if (!p) return <div className={`bg-gray-200 ${className}`} style={{ aspectRatio: '464 / 560', ...style }} />;
   
   const displayImg = (Array.isArray(p.images) && p.images.length > 0) ? p.images[0] : p.image;
 
   // If product has a custom uploaded image URL, display the uploaded photo!
   if (displayImg) {
     return (
-      <div className={`relative flex items-center justify-center overflow-hidden bg-cover bg-center ${className}`}>
+      <div
+        className={`relative flex items-center justify-center overflow-hidden bg-cover bg-center ${className}`}
+        style={{ aspectRatio: '464 / 560', ...style }}
+      >
         <img
           src={displayImg}
           alt={p.name}
           className="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
         />
         {!p.inStock && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-[2px] flex items-center justify-center">
@@ -449,7 +453,7 @@ export function Swatch({ p, className = "" }) {
   return (
     <div
       className={`swatch relative flex items-center justify-center overflow-hidden ${className}`}
-      style={{ background: `linear-gradient(155deg, ${c1}, ${c2})` }}
+      style={{ background: `linear-gradient(155deg, ${c1}, ${c2})`, aspectRatio: '464 / 560', ...style }}
     >
       <div className="texture-layer" style={textureFor(p.category)} />
       <CategoryIcon name={p.category} size={38} />

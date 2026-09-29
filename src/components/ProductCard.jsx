@@ -41,7 +41,7 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
 
       {/* Product Image / Swatch */}
       <div className="text-left relative w-full overflow-hidden group">
-        <Swatch p={{ ...p, inStock: !isOutOfStock }} className="h-40 sm:h-48 md:h-52 w-full" />
+        <Swatch p={{ ...p, inStock: !isOutOfStock }} className="w-full" style={{ aspectRatio: '464 / 560' }} />
         {Array.isArray(p.images) && p.images.length > 1 && (
           <span className="absolute bottom-2 right-2 bg-black/70 backdrop-blur-sm text-white text-[9px] font-mono font-bold px-1.5 py-0.5 rounded shadow z-10 flex items-center gap-1">
             📷 {p.images.length}
@@ -102,6 +102,31 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
             {p.name}
           </h3>
         </div>
+
+        {/* Colours indicator if garment has color options */}
+        {Array.isArray(p.colors) && p.colors.length > 0 && (
+          <div className="flex items-center gap-1.5 mt-1">
+            <div className="flex items-center gap-1">
+              {p.colors.slice(0, 4).map((c, idx) => (
+                <span
+                  key={idx}
+                  title={c.name}
+                  style={{
+                    width: '10px',
+                    height: '10px',
+                    borderRadius: '50%',
+                    backgroundColor: c.hex || '#1B2A4A',
+                    border: '1px solid rgba(0,0,0,0.2)',
+                    display: 'inline-block'
+                  }}
+                />
+              ))}
+            </div>
+            <span className="text-[9px] font-mono text-[var(--ink-soft)] font-semibold">
+              {p.colors.length} {p.colors.length === 1 ? 'colour' : 'colours'}
+            </span>
+          </div>
+        )}
 
         <div className="flex items-center gap-1 mt-1 text-[10px] sm:text-[11px] opacity-70">
           <Star size={11} fill="var(--mustard)" color="var(--mustard)" />

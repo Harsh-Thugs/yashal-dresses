@@ -55,6 +55,7 @@ export function CheckoutPage({
         brand: it.product.brand || "Yashal",
         price: it.product.price,
         size: it.size,
+        color: it.color || null,
         quantity: it.quantity || it.qty || 1,
         qty: it.quantity || it.qty || 1,
         image: (it.product.images && it.product.images[0]) || it.product.image || null,
@@ -193,7 +194,7 @@ export function CheckoutPage({
                 <div>
                   <div style={{ fontWeight: "600", fontSize: "13px" }}>{it.product.name}</div>
                   <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>
-                    Size: {it.size} • Qty: {it.quantity} • {it.product.brand}
+                    Size: {it.size}{it.color ? ` • Colour: ${it.color}` : ''} • Qty: {it.quantity} • {it.product.brand}
                   </div>
                 </div>
                 <div style={{ fontWeight: "600", fontSize: "13px", color: "var(--mustard-deep)" }}>

@@ -15,7 +15,7 @@ export function LoginModal({ open, close, onLogin }) {
         <button onClick={close} className="absolute top-4 right-4 text-gray-500 hover:text-black"><X size={18} /></button>
         <p className="font-mono text-[11px] tracking-widest yd-mustard mb-1">{mode === "login" ? "WELCOME BACK" : "NEW HERE?"}</p>
         <h2 className="font-display text-2xl mb-5 font-semibold">{mode === "login" ? "Log in" : "Create account"}</h2>
-        
+
         <div className="space-y-3">
           {mode === "signup" && (
             <input
