@@ -1,7 +1,8 @@
-import React from "react";
+import { useNavigate } from "react-router-dom";
 import { PaisleyBackground, SparkleField, Peacock, Swatch, GoldenAtelierDust } from "./BrandDecorations";
 
-export default function Hero({ setPage = () => {}, setActiveCategory = () => {}, products = [] }) {
+export default function Hero({ setActiveCategory = () => {}, products = [] }) {
+  const navigate = useNavigate();
   const featuredCategories = ["Formal Shirts", "Kurta Pyjamas", "Cotton Pants", "Formal T-Shirts"];
 
   return (
@@ -26,14 +27,14 @@ export default function Hero({ setPage = () => {}, setActiveCategory = () => {},
           </p>
           <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3">
             <button
-              onClick={() => { setActiveCategory(null); setPage("shop"); }}
+              onClick={() => { setActiveCategory(null); navigate("/shop"); }}
               className="yd-btn yd-btn-primary px-6 py-3.5 shadow-lg w-full sm:w-auto text-center"
               style={{ background: "var(--mustard)", color: "var(--ink)" }}
             >
               Shop the collection
             </button>
             <button
-              onClick={() => { setActiveCategory("Kurta Pyjamas"); setPage("shop"); }}
+              onClick={() => { setActiveCategory("Kurta Pyjamas"); navigate("/shop"); }}
               className="yd-btn px-6 py-3.5 border border-white/30 text-white/90 hover:bg-white/10 w-full sm:w-auto text-center"
             >
               Kurta edit →
@@ -49,7 +50,7 @@ export default function Hero({ setPage = () => {}, setActiveCategory = () => {},
             return (
               <button
                 key={cat}
-                onClick={() => { setActiveCategory(cat); setPage("shop"); }}
+                onClick={() => { setActiveCategory(cat); navigate("/shop"); }}
                 className="tag-card text-left group"
                 style={{ background: "transparent", border: "1px solid rgba(255,255,255,0.15)" }}
               >

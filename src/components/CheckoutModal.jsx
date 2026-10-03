@@ -1,41 +1,41 @@
 import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ShieldCheck, CreditCard, QrCode, Building2, Lock, CheckCircle2,
-  AlertCircle, Download, FileText, ArrowLeft, RefreshCw, Smartphone, Send, Printer, ExternalLink
+  AlertCircle, Download, FileText, ArrowLeft, RefreshCw, Smartphone, Send, Printer, ExternalLink, Truck
 } from "lucide-react";
 import { AnimatedSwingTag, Crest, WaxSeal } from "./BrandDecorations";
-import { money, STORE_CONTACT } from "../data/initialData";
+import { money, STORE_CONTACT, SHIPPING_CONFIG } from "../data/initialData";
 
 /* ----------------------------- CHECKOUT PAGE ----------------------------- */
 export function CheckoutPage({
   cart,
   products,
-  setPage,
   onProceedToPayment,
   user
 }) {
+  const navigate = useNavigate();
   const items = cart
     .map((c) => {
       const product = products.find((p) => p.id === c.id);
-      const quantity = Number(c.qty || c.quantity || 1);
+      const quantity = Number(c.qty || 1);
       return {
         ...c,
         product,
-        qty: quantity,
-        quantity: quantity
+        qty: quantity
       };
     })
     .filter((i) => Boolean(i.product));
 
-  const subtotal = items.reduce((s, i) => s + (Number(i.product.price) * (i.quantity || 1)), 0);
-  const shipping = subtotal >= 999 || subtotal === 0 ? 0 : 79;
+  const subtotal = items.reduce((s, i) => s + (Number(i.product.price) * (i.qty || 1)), 0);
+  const shipping = subtotal >= SHIPPING_CONFIG.freeThreshold || subtotal === 0 ? 0 : SHIPPING_CONFIG.flatRate;
   const total = subtotal + shipping;
 
   const [form, setForm] = useState({
-    name: user?.name || "Patron",
-    phone: "9822019283",
-    email: user?.email || "patron@example.com",
-    address: "Bungalow No. 4, Model Colony, Pune - 411016",
+    name: user?.name || "",
+    phone: "",
+    email: user?.email || "",
+    address: "",
     notes: "",
   });
 
@@ -43,8 +43,8 @@ export function CheckoutPage({
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!form.name || !form.phone || !form.address) {
-      alert("Please fill in all mandatory delivery details.");
+    if (!form.name || !form.phone || !form.address || !form.email) {
+      alert("Please fill in all mandatory delivery details, including your email for the receipt.");
       return;
     }
     onProceedToPayment({
@@ -56,8 +56,7 @@ export function CheckoutPage({
         price: it.product.price,
         size: it.size,
         color: it.color || null,
-        quantity: it.quantity || it.qty || 1,
-        qty: it.quantity || it.qty || 1,
+        qty: it.qty || 1,
         image: (it.product.images && it.product.images[0]) || it.product.image || null,
       })),
       subtotal,
@@ -71,7 +70,7 @@ export function CheckoutPage({
     <div style={{ maxWidth: "1100px", margin: "0 auto", padding: "32px 16px" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <button
-          onClick={() => setPage("shop")}
+          onClick={() => navigate("/shop")}
           style={{ display: "flex", alignItems: "center", gap: "6px", background: "none", border: "none", color: "var(--ink)", fontFamily: "IBM Plex Mono", fontSize: "12px", cursor: "pointer" }}
         >
           ← Return to Atelier Shop
@@ -163,14 +162,23 @@ export function CheckoutPage({
               </div>
             </label>
 
-            <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "card" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "card" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
-              <input type="radio" name="pay" checked={paymentMode === "card"} onChange={() => setPaymentMode("card")} />
-              <CreditCard size={20} color="var(--mustard-deep)" />
-              <div>
-                <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay Credit / Debit Card & Netbanking</div>
-                <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Visa, Mastercard, RuPay, Corporate Amex</div>
-              </div>
-            </label>
+              <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "card" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "card" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+                <input type="radio" name="pay" checked={paymentMode === "card"} onChange={() => setPaymentMode("card")} />
+                <CreditCard size={20} color="var(--mustard-deep)" />
+                <div>
+                  <div style={{ fontWeight: "600", fontSize: "13px" }}>Razorpay Credit / Debit Card & Netbanking</div>
+                  <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Visa, Mastercard, RuPay, Corporate Amex</div>
+                </div>
+              </label>
+
+              <label style={{ display: "flex", alignItems: "center", gap: "12px", padding: "12px", borderRadius: "6px", border: paymentMode === "cod" ? "2px solid var(--mustard)" : "1px solid var(--line)", background: paymentMode === "cod" ? "rgba(212,175,55,0.08)" : "var(--parchment)", cursor: "pointer" }}>
+                <input type="radio" name="pay" checked={paymentMode === "cod"} onChange={() => setPaymentMode("cod")} />
+                <Truck size={20} color="var(--mustard-deep)" />
+                <div>
+                  <div style={{ fontWeight: "600", fontSize: "13px" }}>Cash on Delivery (COD)</div>
+                  <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>Pay at your doorstep upon delivery</div>
+                </div>
+              </label>
           </div>
 
           <button
@@ -185,7 +193,7 @@ export function CheckoutPage({
         {/* Right: Order Summary */}
         <div className="bg-[var(--ivory)] border border-[var(--line)] rounded-[10px] p-5 md:p-7 h-fit shadow-[0_4px_15px_rgba(0,0,0,0.03)]">
           <h3 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "18px" }}>
-            Bag Summary ({items.reduce((s, i) => s + i.quantity, 0)} Items)
+            Bag Summary ({items.reduce((s, i) => s + i.qty, 0)} Items)
           </h3>
 
           <div style={{ display: "flex", flexDirection: "column", gap: "14px", marginBottom: "20px", maxHeight: "320px", overflowY: "auto" }}>
@@ -194,11 +202,11 @@ export function CheckoutPage({
                 <div>
                   <div style={{ fontWeight: "600", fontSize: "13px" }}>{it.product.name}</div>
                   <div style={{ fontSize: "11px", color: "var(--ink-soft)" }}>
-                    Size: {it.size}{it.color ? ` • Colour: ${it.color}` : ''} • Qty: {it.quantity} • {it.product.brand}
+                    Size: {it.size}{it.color ? ` • Colour: ${it.color}` : ''} • Qty: {it.qty} • {it.product.brand}
                   </div>
                 </div>
                 <div style={{ fontWeight: "600", fontSize: "13px", color: "var(--mustard-deep)" }}>
-                  {money(it.product.price * it.quantity)}
+                  {money(it.product.price * it.qty)}
                 </div>
               </div>
             ))}
@@ -224,125 +232,9 @@ export function CheckoutPage({
   );
 }
 
-/* ----------------------------- RAZORPAY GATEWAY MODAL ----------------------------- */
-export function RazorpayGatewayModal({
-  orderDraft,
-  onSuccess,
-  onCancel
-}) {
-  const [step, setStep] = useState("qr"); // 'qr' | 'card' | 'otp'
-  const [otp, setOtp] = useState("123456");
-  const [isProcessing, setIsProcessing] = useState(false);
-
-  if (!orderDraft) return null;
-
-  const handleSimulatePayment = () => {
-    setIsProcessing(true);
-    setTimeout(() => {
-      setIsProcessing(false);
-      const txId = `pay_rzp_${Date.now().toString().slice(-8)}`;
-      onSuccess(txId);
-    }, 1500);
-  };
-
-  return (
-    <div style={{ position: "fixed", inset: 0, zIndex: 1000, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", padding: "16px", backdropFilter: "blur(4px)" }}>
-      <div style={{ background: "#ffffff", width: "100%", maxWidth: "460px", borderRadius: "12px", overflow: "hidden", boxShadow: "0 25px 60px rgba(0,0,0,0.5)", border: "1px solid #e0e0e0" }}>
-        {/* Razorpay Brand Header */}
-        <div style={{ background: "#0c2340", padding: "18px 24px", color: "#ffffff", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div>
-            <div style={{ fontSize: "10px", letterSpacing: "1px", textTransform: "uppercase", color: "#60a5fa", fontWeight: "bold" }}>
-              SECURED BY RAZORPAY
-            </div>
-            <div style={{ fontSize: "16px", fontWeight: "bold", marginTop: "2px" }}>
-              Yashal Dresses Atelier
-            </div>
-          </div>
-          <div style={{ textAlign: "right" }}>
-            <div style={{ fontSize: "11px", color: "#94a3b8" }}>Payable Amount</div>
-            <div style={{ fontSize: "18px", fontWeight: "bold", color: "#facc15" }}>
-              {money(orderDraft.total)}
-            </div>
-          </div>
-        </div>
-
-        <div style={{ padding: "24px" }}>
-          {step === "qr" && (
-            <div style={{ textAlign: "center" }}>
-              <p style={{ fontSize: "13px", color: "#475569", margin: "0 0 16px 0" }}>
-                Scan this dynamic QR code with <strong>Google Pay, PhonePe, Paytm, or BHIM</strong>
-              </p>
-
-              {/* Dynamic QR Box */}
-              <div style={{ width: "180px", height: "180px", margin: "0 auto 20px auto", background: "#f8fafc", border: "2px dashed #0284c7", borderRadius: "12px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "12px" }}>
-                <QrCode size={110} color="#0c2340" />
-                <span style={{ fontSize: "10px", fontFamily: "IBM Plex Mono", color: "#0284c7", marginTop: "8px", fontWeight: "bold" }}>
-                  UPI ID: yashaldresses@icici
-                </span>
-              </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
-                <button
-                  onClick={handleSimulatePayment}
-                  disabled={isProcessing}
-                  style={{ width: "100%", padding: "12px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
-                >
-                  {isProcessing ? "Verifying UPI Transaction..." : `Approve & Pay ${money(orderDraft.total)}`}
-                </button>
-
-                <button
-                  onClick={() => setStep("otp")}
-                  style={{ background: "none", border: "none", color: "#64748b", fontSize: "12px", cursor: "pointer", textDecoration: "underline" }}
-                >
-                  Or enter Netbanking 3D Secure OTP
-                </button>
-              </div>
-            </div>
-          )}
-
-          {step === "otp" && (
-            <div>
-              <p style={{ fontSize: "13px", color: "#475569", margin: "0 0 14px 0" }}>
-                Enter the 6-digit Bank OTP sent to <strong>+91 {orderDraft.customer?.phone}</strong>
-              </p>
-              <input
-                type="text"
-                maxLength={6}
-                value={otp}
-                onChange={e => setOtp(e.target.value)}
-                style={{ width: "100%", padding: "12px", textAlign: "center", fontSize: "20px", letterSpacing: "8px", fontWeight: "bold", border: "2px solid #0284c7", borderRadius: "6px", marginBottom: "16px" }}
-              />
-
-              <button
-                onClick={handleSimulatePayment}
-                disabled={isProcessing}
-                style={{ width: "100%", padding: "12px", background: "#0284c7", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}
-              >
-                {isProcessing ? "Authorizing 3D Secure..." : "Authorize & Complete Order"}
-              </button>
-            </div>
-          )}
-
-          <div style={{ marginTop: "16px", textAlign: "center" }}>
-            <button
-              onClick={onCancel}
-              style={{ background: "none", border: "none", color: "#ef4444", fontSize: "12px", cursor: "pointer" }}
-            >
-              Cancel Payment & Return
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 /* ----------------------------- CONFIRMATION PAGE & TAX INVOICE ----------------------------- */
-export function ConfirmationPage({
-  order,
-  setPage,
-  onSendEmailConfirmation
-}) {
+export function ConfirmationPage({ order, onSendEmailConfirmation }) {
+  const navigate = useNavigate();
   const [emailStatus, setEmailStatus] = useState("");
 
   if (!order) return null;
@@ -433,7 +325,7 @@ export function ConfirmationPage({
           </thead>
           <tbody>
             {order.items?.map((it, idx) => {
-              const itemQty = Number(it.quantity || it.qty || 1);
+              const itemQty = Number(it.qty || 1);
               return (
                 <tr key={idx} style={{ borderBottom: "1px solid var(--line)" }}>
                   <td style={{ padding: "10px" }}>
@@ -487,7 +379,7 @@ export function ConfirmationPage({
         </button>
 
         <button
-          onClick={() => setPage("shop")}
+          onClick={() => navigate("/shop")}
           className="yd-btn py-3 px-5 bg-transparent border border-[var(--line)] text-[var(--ink)] flex items-center justify-center rounded"
         >
           Continue Shopping

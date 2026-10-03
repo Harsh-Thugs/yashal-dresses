@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { adminSignIn } from "../utils/firebase";
 import { X, Lock, KeyRound, ShieldCheck } from "lucide-react";
 
 export function LoginModal({ open, close, onLogin }) {
@@ -62,20 +63,27 @@ export function LoginModal({ open, close, onLogin }) {
 }
 
 export function MerchantLoginModal({ open, close, onUnlock }) {
-  const [pin, setPin] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   if (!open) return null;
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (pin.trim() === "Dresses@067") {
+    setLoading(true);
+    try {
+      await adminSignIn(email, password);
       onUnlock();
-      setPin("");
+      setEmail("");
+      setPassword("");
       setError("");
       close();
-    } else {
-      setError("Incorrect Merchant Security Password. Access denied.");
+    } catch (err) {
+      setError("Incorrect Merchant Email or Password. Access denied.");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -89,19 +97,26 @@ export function MerchantLoginModal({ open, close, onUnlock }) {
           RESTRICTED WORKROOM
         </p>
         <h2 className="font-display" style={{ margin: "0 0 16px 0", fontSize: "22px", color: "var(--ink)" }}>
-          Merchant Passcode
+          Merchant Login
         </h2>
         <p style={{ fontSize: "12px", color: "var(--ink-soft)", lineHeight: "1.5", marginBottom: "20px" }}>
-          Enter authorized atelier security password to manage live inventory and orders.
+          Enter authorized atelier email and password to manage live inventory and orders.
         </p>
 
         <form onSubmit={handleSubmit}>
           <input
-            type="password"
-            value={pin}
-            onChange={(e) => { setPin(e.target.value); setError(""); }}
-            placeholder="Enter Merchant Password"
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            placeholder="Admin Email"
             autoFocus
+            style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)", fontSize: "14px", textAlign: "center", letterSpacing: "1px", marginBottom: "12px" }}
+          />
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => { setPassword(e.target.value); setError(""); }}
+            placeholder="Admin Password"
             style={{ width: "100%", padding: "12px", borderRadius: "6px", border: "1px solid var(--line)", background: "var(--parchment)", fontSize: "14px", textAlign: "center", letterSpacing: "2px", marginBottom: "12px" }}
           />
 
@@ -122,10 +137,11 @@ export function MerchantLoginModal({ open, close, onUnlock }) {
             </button>
             <button
               type="submit"
+              disabled={loading}
               className="yd-btn yd-btn-primary"
-              style={{ flex: 1, padding: "10px", background: "var(--ink)", color: "var(--ivory)" }}
+              style={{ flex: 1, padding: "10px", background: "var(--ink)", color: "var(--ivory)", opacity: loading ? 0.7 : 1 }}
             >
-              Unlock
+              {loading ? "Authenticating..." : "Login"}
             </button>
           </div>
         </form>

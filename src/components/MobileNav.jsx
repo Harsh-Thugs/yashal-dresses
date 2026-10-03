@@ -1,7 +1,8 @@
-import React from "react";
+import { useNavigate } from "react-router-dom";
 import { X, ChevronRight } from "lucide-react";
 
-export default function MobileNav({ open, close, categories, setPage, setActiveCategory }) {
+export default function MobileNav({ open, close, categories, setActiveCategory }) {
+  const navigate = useNavigate();
   return (
     <div className={`fixed inset-0 z-[55] md:hidden ${open ? "" : "pointer-events-none"}`}>
       <div className={`absolute inset-0 bg-black/40 transition-opacity ${open ? "opacity-100" : "opacity-0"}`} onClick={close} />
@@ -14,7 +15,7 @@ export default function MobileNav({ open, close, categories, setPage, setActiveC
           {categories.map((c) => (
             <button
               key={c.name}
-              onClick={() => { setActiveCategory(c.name); setPage("shop"); close(); }}
+              onClick={() => { setActiveCategory(c.name); navigate("/shop"); close(); }}
               className="w-full flex items-center justify-between px-3 py-3 text-sm hover:bg-black/5 rounded font-medium"
             >
               {c.name} <ChevronRight size={15} className="opacity-40" />

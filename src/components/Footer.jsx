@@ -1,9 +1,10 @@
-import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Phone, Mail, MapPin, ExternalLink, MessageCircle } from "lucide-react";
 import { Crest } from "./BrandDecorations";
 import { STORE_CONTACT } from "./InquiryModal";
 
-export default function Footer({ setPage, setActiveCategory, onOpenInquiry }) {
+export default function Footer({ setActiveCategory, onOpenInquiry }) {
+  const navigate = useNavigate();
   return (
     <footer className="yd-ink-bg mt-12 sm:mt-14 border-t border-[var(--mustard)]/30 text-white">
       <div className="max-w-7xl mx-auto px-4 md:px-6 py-10 md:py-12 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-7 md:gap-8 text-left">
@@ -37,7 +38,7 @@ export default function Footer({ setPage, setActiveCategory, onOpenInquiry }) {
               <button
                 key={c}
                 className="block hover:text-[var(--mustard)] transition-colors text-left"
-                onClick={() => { setActiveCategory(c); setPage("shop"); }}
+                onClick={() => { setActiveCategory(c); navigate("/shop"); }}
               >
                 • {c}
               </button>

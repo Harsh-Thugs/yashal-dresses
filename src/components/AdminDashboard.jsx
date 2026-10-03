@@ -26,8 +26,6 @@ export default function AdminDashboard({
   onOpenAddProductModal,
   onSeedFirebase,
   firebaseStatus,
-  firebaseConfig,
-  onSaveFirebaseConfig,
   editingProduct,
   setEditingProduct,
   isProductModalOpen,
@@ -55,10 +53,9 @@ export default function AdminDashboard({
   const [newColorImg, setNewColorImg] = useState('');
 
   // Firebase config input state
-  const [configText, setConfigText] = useState(() => JSON.stringify(firebaseConfig, null, 2));
+
 
   // Email webhook state
-  const [emailWebhook, setEmailWebhook] = useState(() => localStorage.getItem(EMAIL_AUTOMATION_CONFIG.scriptWebhookKey) || '');
   const [emailStatus, setEmailStatus] = useState('');
   const [isSendingTestEmail, setIsSendingTestEmail] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
@@ -352,15 +349,10 @@ export default function AdminDashboard({
     });
   };
 
-  const handleSaveWebhook = () => {
-    localStorage.setItem(EMAIL_AUTOMATION_CONFIG.scriptWebhookKey, emailWebhook.trim());
-    setEmailStatus('Webhook URL saved to browser storage!');
-    setTimeout(() => setEmailStatus(''), 3000);
-  };
-
   const handleSendTestEmail = async () => {
-    if (!emailWebhook.trim()) {
-      alert("Please paste your Google Apps Script Webhook URL first.");
+    const envWebhook = import.meta.env.VITE_EMAIL_WEBHOOK_URL;
+    if (!envWebhook) {
+      alert("No Webhook URL found in .env file (VITE_EMAIL_WEBHOOK_URL). Please configure it first.");
       return;
     }
     setIsSendingTestEmail(true);
@@ -373,18 +365,18 @@ export default function AdminDashboard({
         customerPhone: "9673533839",
         deliveryAddress: "Shop No. 4 & 5, Heritage Plaza, FC Road, Pune",
         grandTotal: "₹2,999",
-        paymentMethod: "Razorpay / UPI (Test Verification)",
+        paymentMethod: "Test Verification",
         items: [
           { name: "Velmore Royal Jacquard Kurta Pyjama Set", quantity: 1, price: 2999, size: "L", brand: "Velmore" }
         ]
       };
-      await fetch(emailWebhook.trim(), {
+      await fetch(envWebhook, {
         method: "POST",
         mode: "no-cors",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
-      setEmailStatus('✓ Test email dispatched to dressesyashal@gmail.com & yashaldressespune@gmail.com');
+      setEmailStatus('✓ Test email successfully dispatched via .env Webhook!');
       setTimeout(() => setEmailStatus(''), 5000);
     } catch (err) {
       setEmailStatus('Failed to send test email: ' + err.message);
@@ -843,34 +835,14 @@ export default function AdminDashboard({
               Yashal Dresses uses Firebase Firestore to sync garments, brands, categories, and customer orders across all devices in real time.
             </p>
 
-            <div style={{ marginBottom: '16px' }}>
-              <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '6px' }}>
-                Firebase Config JSON
-              </label>
-              <textarea
-                rows={10}
-                value={configText}
-                onChange={e => setConfigText(e.target.value)}
-                style={{ width: '100%', padding: '12px', fontFamily: 'IBM Plex Mono', fontSize: '12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)' }}
-              />
+            <div style={{ marginBottom: '16px', padding: '16px', background: 'rgba(212,175,55,0.1)', borderRadius: '6px', border: '1px solid var(--mustard)' }}>
+              <h4 style={{ fontWeight: '600', marginBottom: '8px' }}>Secure Configuration</h4>
+              <p style={{ fontSize: '12px' }}>
+                Firebase configuration is now managed securely via environment variables (<code>.env</code> file) and cannot be injected from the client-side for security reasons.
+              </p>
             </div>
 
             <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-              <button
-                onClick={() => {
-                  try {
-                    const parsed = JSON.parse(configText);
-                    onSaveFirebaseConfig(parsed);
-                    alert("Firebase configuration saved and activated!");
-                  } catch (err) {
-                    alert("Invalid JSON format: " + err.message);
-                  }
-                }}
-                className="yd-btn yd-btn-primary"
-                style={{ padding: '10px 20px', background: 'var(--ink)', color: 'var(--ivory)' }}
-              >
-                Save Firebase Config
-              </button>
               <button
                 onClick={onSeedFirebase}
                 className="yd-btn"
@@ -887,46 +859,28 @@ export default function AdminDashboard({
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
             <div style={{ background: 'var(--ivory)', border: '1px solid var(--line)', padding: '24px', borderRadius: '8px' }}>
               <h3 style={{ margin: '0 0 10px 0', fontSize: '18px' }}>✉️ Automated Email Notifications</h3>
-              <p style={{ fontSize: '13px', color: 'var(--ink-soft)', lineHeight: '1.6', marginBottom: '18px' }}>
-                Send instant bespoke invoices and notifications to your customers from <strong>{EMAIL_AUTOMATION_CONFIG.senderEmail}</strong> and receive instant shop alerts at <strong>{EMAIL_AUTOMATION_CONFIG.storeEmail}</strong>.
-              </p>
+                <p style={{ fontSize: '13px', color: 'var(--ink-soft)', lineHeight: '1.6', marginBottom: '18px' }}>
+                  Send instant bespoke invoices and notifications to your customers from <strong>{EMAIL_AUTOMATION_CONFIG.senderEmail}</strong> and receive instant shop alerts at <strong>{EMAIL_AUTOMATION_CONFIG.storeEmail}</strong>.
+                  <br/><br/>
+                  <span style={{ color: 'var(--mustard-deep)', fontWeight: 'bold' }}>✓ Webhook securely loaded from .env</span>
+                </p>
 
-              <div style={{ marginBottom: '16px' }}>
-                <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', marginBottom: '6px' }}>
-                  Google Apps Script Webhook URL
-                </label>
-                <input
-                  type="text"
-                  placeholder="https://script.google.com/macros/s/.../exec"
-                  value={emailWebhook}
-                  onChange={e => setEmailWebhook(e.target.value)}
-                  style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--line)', background: 'var(--parchment)', fontSize: '13px' }}
-                />
-              </div>
+                {emailStatus && (
+                  <div style={{ padding: '10px 14px', borderRadius: '6px', background: 'rgba(212,175,55,0.15)', color: 'var(--ink)', fontSize: '12px', marginBottom: '16px' }}>
+                    {emailStatus}
+                  </div>
+                )}
 
-              {emailStatus && (
-                <div style={{ padding: '10px 14px', borderRadius: '6px', background: 'rgba(212,175,55,0.15)', color: 'var(--ink)', fontSize: '12px', marginBottom: '16px' }}>
-                  {emailStatus}
+                <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
+                  <button
+                    onClick={handleSendTestEmail}
+                    disabled={isSendingTestEmail}
+                    className="yd-btn"
+                    style={{ padding: '10px 18px', background: 'var(--mustard)', color: 'var(--ink)', border: 'none', fontWeight: 'bold' }}
+                  >
+                    {isSendingTestEmail ? 'Sending...' : 'Test Send Order Confirmed Email'}
+                  </button>
                 </div>
-              )}
-
-              <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-                <button
-                  onClick={handleSaveWebhook}
-                  className="yd-btn yd-btn-primary"
-                  style={{ padding: '10px 18px', background: 'var(--ink)', color: 'var(--ivory)' }}
-                >
-                  Save Webhook URL
-                </button>
-                <button
-                  onClick={handleSendTestEmail}
-                  disabled={isSendingTestEmail}
-                  className="yd-btn"
-                  style={{ padding: '10px 18px', background: 'var(--mustard)', color: 'var(--ink)', border: 'none', fontWeight: 'bold' }}
-                >
-                  {isSendingTestEmail ? 'Sending...' : 'Test Send Order Confirmed Email'}
-                </button>
-              </div>
             </div>
 
             <div style={{ background: 'var(--ivory)', border: '1px solid var(--line)', padding: '24px', borderRadius: '8px' }}>
@@ -1289,13 +1243,14 @@ export default function AdminDashboard({
                     alert("Please enter a garment title.");
                     return;
                   }
-                  const totalStock = Object.values(formData.stock).reduce((a, b) => a + Number(b), 0);
-                  const updatedProd = {
-                    ...formData,
-                    inStock: totalStock > 0,
-                    image: formData.images[0] || null,
-                    colors: formData.colors || [],
-                  };
+                    const totalStock = Object.values(formData.stock).reduce((a, b) => a + Number(b), 0);
+                    const updatedProd = {
+                      ...formData,
+                      sizes: sizesFor(formData.category || 'Formal Shirts'),
+                      inStock: totalStock > 0,
+                      image: formData.images[0] || null,
+                      colors: formData.colors || [],
+                    };
                   onSaveProduct(updatedProd);
                   setIsProductModalOpen(false);
                 }}

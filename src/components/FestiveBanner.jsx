@@ -1,7 +1,8 @@
-import React from "react";
+import { useNavigate } from "react-router-dom";
 import { useReveal, GoldenAtelierDust } from "./BrandDecorations";
 
-export default function FestiveBanner({ setPage, setActiveCategory }) {
+export default function FestiveBanner({ setActiveCategory }) {
+  const navigate = useNavigate();
   const [ref, inView] = useReveal();
 
   return (
@@ -15,7 +16,7 @@ export default function FestiveBanner({ setPage, setActiveCategory }) {
             <p className="text-sm text-white/60 mt-1 max-w-md">Masterfully crafted everyday essentials — from crisp morning workdays to relaxed weekend evenings.</p>
           </div>
           <button
-            onClick={() => { setActiveCategory("Formal Shirts"); setPage("shop"); }}
+            onClick={() => { setActiveCategory("Formal Shirts"); navigate("/shop"); }}
             className="yd-btn px-6 py-3.5 shrink-0 font-bold text-xs shadow-lg"
             style={{ background: "var(--mustard)", color: "var(--ink)" }}
           >

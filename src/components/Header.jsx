@@ -1,10 +1,15 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useStore } from "../StoreContext";
 import { Search, ShoppingBag, User, Menu, X, LayoutDashboard, Store, MessageCircle } from "lucide-react";
 import { Crest } from "./BrandDecorations";
 
-export default function Header({
-  page, setPage, query, setQuery, cartCount, onCartClick, user, onLoginClick, onMenuClick, isAdminMode, setIsAdminMode, onInquiryClick
+export default function Header({ 
+  query, setQuery, isAdminMode, setIsAdminMode, onInquiryClick
 }) {
+  const navigate = useNavigate();
+  const { cart, user, openLogin, setIsCartOpen } = useStore();
+  const cartCount = cart.reduce((sum, it) => sum + it.qty, 0);
   const [showSearch, setShowSearch] = useState(false);
 
   return (
@@ -14,10 +19,10 @@ export default function Header({
 
           {/* Left section: Mobile menu & Brand logo */}
           <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <button className="md:hidden text-white/90 hover:text-white p-1" onClick={onMenuClick} aria-label="Open menu">
+            <button className="md:hidden text-white/90 hover:text-white p-1" onClick={() => setIsCartOpen(true)} aria-label="Open menu">
               <Menu size={20} />
             </button>
-            <button onClick={() => { setPage("home"); setIsAdminMode(false); }} className="flex items-center gap-1.5 sm:gap-2.5 group text-left">
+            <button onClick={() => { navigate("/"); setIsAdminMode(false); }} className="flex items-center gap-1.5 sm:gap-2.5 group text-left">
               <div className="shrink-0">
                 <Crest size={22} showBanner={false} />
               </div>
@@ -47,7 +52,7 @@ export default function Header({
                 <Search size={16} className="opacity-70 shrink-0" />
                 <input
                   value={query}
-                  onChange={(e) => { setQuery(e.target.value); setPage("shop"); }}
+                  onChange={(e) => { setQuery(e.target.value); navigate("/shop"); }}
                   placeholder="Search shirts, jeans, kurtas, cargos…"
                   className="bg-transparent outline-none text-sm w-full placeholder:text-white/50 text-white"
                 />
@@ -109,12 +114,12 @@ export default function Header({
                   <Search size={19} />
                 </button>
 
-                <button onClick={onLoginClick} className="flex items-center gap-1.5 text-white/90 hover:text-white p-1" aria-label="Account">
+                <button onClick={openLogin} className="flex items-center gap-1.5 text-white/90 hover:text-white p-1" aria-label="Account">
                   <User size={19} />
                   <span className="hidden md:inline text-xs font-mono">{user ? user.name.split(" ")[0] : "Login"}</span>
                 </button>
 
-                <button onClick={onCartClick} className="relative text-white/90 hover:text-white p-1" aria-label="Cart">
+                <button onClick={() => setIsCartOpen(true)} className="relative text-white/90 hover:text-white p-1" aria-label="Cart">
                   <ShoppingBag size={19} />
                   {cartCount > 0 && (
                     <span className="absolute -top-1 -right-1 bg-[var(--mustard)] text-[9px] font-mono font-bold rounded-full w-4 h-4 flex items-center justify-center text-[var(--ink)] shadow">
@@ -134,7 +139,7 @@ export default function Header({
               <Search size={16} className="text-[var(--mustard)] shrink-0" />
               <input
                 value={query}
-                onChange={(e) => { setQuery(e.target.value); setPage("shop"); }}
+                onChange={(e) => { setQuery(e.target.value); navigate("/shop"); }}
                 placeholder="Search shirts, jeans, kurtas, cargos…"
                 className="bg-transparent outline-none text-xs w-full placeholder:text-white/50 text-white font-sans"
                 autoFocus
