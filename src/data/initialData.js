@@ -328,3 +328,8 @@ function doPost(e) {
   }
 }
 `;
+
+export const SHIPPING_CONFIG = {
+  flatRate: 79,
+  freeThreshold: 999
+};

@@ -5,9 +5,10 @@ import ProductCard from "./ProductCard";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
+import { sizesFor } from "../data/initialData";
+
 export default function ProductPage({
   product,
-  setPage,
   goBack,
   addToCart,
   wishlist,
@@ -54,10 +55,10 @@ export default function ProductPage({
 
   const availableSizes = Array.isArray(product.sizes) && product.sizes.length > 0
     ? product.sizes
-    : ["S", "M", "L", "XL", "XXL"];
+    : sizesFor(product.category || "");
 
   const stockObj = typeof product.stock === "object" && product.stock !== null ? product.stock : {};
-  const selectedSizeStock = size ? Number(stockObj[size] ?? (product.inStock ? 5 : 0)) : 0;
+  const selectedSizeStock = size ? Number(stockObj[size] ?? 0) : 0;
   const isSizeOutOfStock = size ? selectedSizeStock === 0 : false;
   const isProductOutOfStock = !product.inStock || (Object.keys(stockObj).length > 0 && Object.values(stockObj).every(v => Number(v) === 0));
 
@@ -73,8 +74,6 @@ export default function ProductPage({
       goBack();
     } else if (typeof window !== "undefined" && window.history.length > 1) {
       window.history.back();
-    } else {
-      setPage("shop");
     }
   };
 
@@ -307,7 +306,7 @@ export default function ProductPage({
             
             <div className="grid grid-cols-3 sm:flex sm:flex-wrap gap-2 sm:gap-2.5">
               {availableSizes.map((s) => {
-                const sizeQty = stockObj[s] !== undefined ? Number(stockObj[s]) : (product.inStock ? 5 : 0);
+                const sizeQty = stockObj[s] !== undefined ? Number(stockObj[s]) : 0;
                 const out = sizeQty === 0;
                 const isSelected = size === s;
                 return (

@@ -1,17 +1,20 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { ShoppingBag, X, Plus, Minus, Trash2, ArrowRight } from "lucide-react";
 import { Swatch } from "./BrandDecorations";
+import { SHIPPING_CONFIG } from "../data/initialData";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
-export default function CartDrawer({ open, close, cart, products, updateQty, removeItem, setPage, user, openLogin }) {
+export default function CartDrawer({ open, close, cart, products, updateQty, removeItem, user, openLogin }) {
+  const navigate = useNavigate();
   const items = cart.map((c) => ({
     ...c,
     product: products.find((p) => p.id === c.id),
   })).filter((i) => Boolean(i.product));
 
   const subtotal = items.reduce((s, i) => s + i.product.price * i.qty, 0);
-  const freeShippingThreshold = 999;
+  const freeShippingThreshold = SHIPPING_CONFIG.freeThreshold;
   const progressToFreeShipping = Math.min(100, (subtotal / freeShippingThreshold) * 100);
 
   return (
@@ -52,7 +55,7 @@ export default function CartDrawer({ open, close, cart, products, updateQty, rem
             <p className="font-display text-xl mb-1 font-semibold">Your bag is empty.</p>
             <p className="text-sm opacity-60 mb-5">Nothing tagged for checkout yet.</p>
             <button
-              onClick={() => { close(); setPage("shop"); }}
+              onClick={() => { close(); navigate("/shop"); }}
               className="yd-btn yd-btn-primary px-6 py-2.5"
             >
               Start shopping
@@ -97,7 +100,7 @@ export default function CartDrawer({ open, close, cart, products, updateQty, rem
                   if (!user) {
                     openLogin();
                   } else {
-                    setPage("checkout");
+                    navigate("/checkout");
                   }
                 }}
                 className="yd-btn yd-btn-primary w-full py-3.5 flex items-center justify-center gap-2 text-sm font-bold shadow-lg"

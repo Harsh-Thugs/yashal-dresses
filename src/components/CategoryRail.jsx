@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import debounce from "lodash/debounce";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export default function CategoryRail({
@@ -27,8 +28,12 @@ export default function CategoryRail({
 
   useEffect(() => {
     checkScroll();
-    window.addEventListener("resize", checkScroll);
-    return () => window.removeEventListener("resize", checkScroll);
+    const debouncedCheck = debounce(checkScroll, 150);
+    window.addEventListener("resize", debouncedCheck);
+    return () => {
+      window.removeEventListener("resize", debouncedCheck);
+      debouncedCheck.cancel();
+    };
   }, [categories]);
 
   const scrollBy = (dir) => {

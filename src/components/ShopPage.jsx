@@ -2,10 +2,10 @@ import React, { useState, useMemo, useEffect } from "react";
 import { SlidersHorizontal } from "lucide-react";
 import ProductCard from "./ProductCard";
 import FilterPanel from "./FilterPanel";
+import { useStore } from "../StoreContext";
 
-export default function ShopPage({
-  query, setQuery, activeCategory, setActiveCategory, categories, products, onOpen, wishlist, toggleWish, brands = []
-}) {
+export default function ShopPage({ onOpen }) {
+  const { query, setQuery, activeCategory, setActiveCategory, categories, products, brandMap, wishlist, toggleWishlist } = useStore();
   const [selected, setSelected] = useState(activeCategory ? [activeCategory] : []);
   const [activeBrand, setActiveBrand] = useState("all");
   const [sizeSel, setSizeSel] = useState(null);
@@ -217,8 +217,8 @@ export default function ShopPage({
                   index={i}
                   onOpen={onOpen}
                   wishlist={wishlist}
-                  toggleWish={toggleWish}
-                  brands={brands}
+                  toggleWish={toggleWishlist}
+                  brands={brandMap}
                 />
               ))}
             </div>

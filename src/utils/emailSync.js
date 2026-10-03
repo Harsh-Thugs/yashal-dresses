@@ -120,8 +120,13 @@ export const GOOGLE_APPS_SCRIPT_EMAIL_CODE = `// ===============================
 function doPost(e) {
   try {
     var data = JSON.parse(e.postData.contents);
-    var recipient = "yashaldressespune@gmail.com";
-    var subject = "Order Confirmed!";
+    
+    // Store Manager Email
+    var storeManagerEmail = "yashaldressespune@gmail.com"; 
+    // Dynamically grab the Customer's Email from checkout
+    var customerEmail = data.customerEmail || storeManagerEmail; 
+
+    var subject = "Order Confirmed - Yashal Dresses";
 
     var htmlBody = '<div style="font-family: -apple-system, BlinkMacSystemFont, Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #FBF6EC; border: 2px solid #D4AF37; border-radius: 12px; overflow: hidden;">' +
       '<div style="background-color: #1A1224; padding: 24px; text-align: center; border-bottom: 2px solid #D4AF37;">' +
@@ -153,9 +158,10 @@ function doPost(e) {
       '</div>' +
     '</div>';
 
-    // Send email from dressesyashal@gmail.com to yashaldressespune@gmail.com
+    // Send email to Customer, and CC the Store Manager
     MailApp.sendEmail({
-      to: recipient,
+      to: customerEmail,
+      cc: storeManagerEmail,
       subject: subject,
       htmlBody: htmlBody
     });

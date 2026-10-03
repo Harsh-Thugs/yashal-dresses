@@ -1,4 +1,5 @@
 import { initializeApp, getApps, getApp } from "firebase/app";
+import { getAuth, signInWithEmailAndPassword } from "firebase/auth";
 import {
   getFirestore,
   collection,
@@ -21,6 +22,7 @@ import { INITIAL_PRODUCTS, INITIAL_CATEGORIES, INITIAL_BRANDS } from "../data/in
 let firebaseApp = null;
 let firestoreDb = null;
 let firebaseStorage = null;
+let firebaseAuth = null;
 
 /**
  * Initializes Firebase dynamically if valid config is present.
@@ -30,7 +32,7 @@ export function getFirebaseInstance() {
   const configured = isFirebaseConfigured(config);
 
   if (!configured) {
-    return { app: null, db: null, storage: null, isLive: false };
+    return { app: null, db: null, storage: null, auth: null, isLive: false };
   }
 
   try {
@@ -41,10 +43,11 @@ export function getFirebaseInstance() {
     }
     firestoreDb = getFirestore(firebaseApp);
     firebaseStorage = getStorage(firebaseApp);
-    return { app: firebaseApp, db: firestoreDb, storage: firebaseStorage, isLive: true };
+    firebaseAuth = getAuth(firebaseApp);
+    return { app: firebaseApp, db: firestoreDb, storage: firebaseStorage, auth: firebaseAuth, isLive: true };
   } catch (err) {
     console.error("Firebase initialization failed:", err);
-    return { app: null, db: null, storage: null, isLive: false };
+    return { app: null, db: null, storage: null, auth: null, isLive: false };
   }
 }
 
@@ -508,7 +511,7 @@ export async function uploadToCloudinaryCDN(file, onProgress = null) {
  * Sends order confirmation email via Google Apps Script Webhook
  */
 export async function sendOrderConfirmationEmail(order) {
-  const webhookUrl = (typeof localStorage !== 'undefined' ? localStorage.getItem('yd_email_webhook_url') : '') || '';
+  const webhookUrl = (import.meta.env?.VITE_EMAIL_WEBHOOK_URL || (typeof localStorage !== 'undefined' ? localStorage.getItem('yd_email_webhook_url') : '')) || '';
   if (!webhookUrl) return { success: false, reason: 'No webhook configured' };
   try {
     const payload = {
@@ -537,4 +540,25 @@ export async function sendOrderConfirmationEmail(order) {
   } catch (err) {
     return { success: false, error: err.message };
   }
+}
+
+export async function adminSignIn(email, password) {
+  const { auth } = getFirebaseInstance();
+  if (!auth) throw new Error("Firebase Auth is not initialized.");
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  return userCredential.user;
+}
+
+import { onAuthStateChanged } from "firebase/auth";
+export function subscribeToAuthChanges(callback) {
+  const { auth } = getFirebaseInstance();
+  if (!auth) {
+    callback(null);
+    return () => {};
+  }
+  return onAuthStateChanged(auth, callback);
+}
+export async function adminSignOut() {
+  const { auth } = getFirebaseInstance();
+  if (auth) await auth.signOut();
 }

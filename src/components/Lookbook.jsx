@@ -2,13 +2,13 @@ import React from "react";
 import { useReveal, Swatch } from "./BrandDecorations";
 
 const LOOKS = [
-  { title: "Executive Formal", items: ["Zodiac Milano Classic Full Sleeve Shirt", "Blackberry Tailored Fit Charcoal Formal Trouser"] },
-  { title: "Weekend Casual", items: ["Classic Song Washed Indigo Denim Casual Shirt", "Kanchiro 6-Pocket Tactical Utility Cargo"] },
-  { title: "Festive Royalty", items: ["Velmore Royal Jacquard Kurta Pyjama Set", "Sanwara Embroidered Silk Blend Kurta Pyjama"] },
-  { title: "Smart Layer", items: ["Monte Carlo Premium Fleece Crewneck Sweatshirt", "Live in Ultra-Soft Chino Cotton Pants"] },
+  { title: "Executive Formal", items: ["YD-100", "YD-116"] },
+  { title: "Weekend Casual", items: ["YD-110", "YD-127"] },
+  { title: "Festive Royalty", items: ["YD-143", "YD-144"] },
+  { title: "Smart Layer", items: ["YD-141", "YD-123"] },
 ];
 
-export default function Lookbook({ products = [], onOpen = () => {}, setPage = () => {} }) {
+export default function Lookbook({ products = [], onOpen = () => {} }) {
   const [ref, inView] = useReveal();
 
   return (
@@ -22,7 +22,7 @@ export default function Lookbook({ products = [], onOpen = () => {}, setPage = (
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
         {LOOKS.map((look) => {
           const items = look.items
-            .map((n) => (products && products.length > 0 ? products.find((p) => p.name === n) : null))
+            .map((id) => (products && products.length > 0 ? products.find((p) => p.id === id) : null))
             .filter(Boolean);
           return (
             <div key={look.title} className="tag-card p-4">

@@ -1,4 +1,5 @@
 import React from "react";
+import { useNavigate } from "react-router-dom";
 import { Package } from "lucide-react";
 import { Swatch } from "./BrandDecorations";
 
@@ -26,14 +27,15 @@ function OrderTracker({ status }) {
   );
 }
 
-export default function OrdersPage({ orders, products, setPage }) {
+export default function OrdersPage({ orders, products }) {
+  const navigate = useNavigate();
   if (orders.length === 0) {
     return (
       <div className="max-w-lg mx-auto px-4 py-24 text-center">
         <Package size={36} className="opacity-30 mx-auto mb-3" />
         <p className="font-display text-xl mb-1 font-semibold">No orders yet.</p>
         <p className="text-sm opacity-60 mb-5">Once you place an order, you'll be able to track it here.</p>
-        <button onClick={() => setPage("shop")} className="yd-btn yd-btn-primary px-6 py-2.5">
+        <button onClick={() => navigate("/shop")} className="yd-btn yd-btn-primary px-6 py-2.5">
           Start shopping
         </button>
       </div>

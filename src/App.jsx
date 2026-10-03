@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import BrandStyles from './components/BrandStyles';
+import { Routes, Route, useNavigate, useLocation, useParams } from 'react-router-dom';
+import { StoreProvider } from './StoreContext';
+
 import CurtainIntro from './components/CurtainIntro';
 import Header from './components/Header';
 import Hero from './components/Hero';
@@ -10,7 +12,8 @@ import ProductPage from './components/ProductPage';
 import Lookbook from './components/Lookbook';
 import ShopPage from './components/ShopPage';
 import CartDrawer from './components/CartDrawer';
-import { CheckoutPage, RazorpayGatewayModal, ConfirmationPage } from './components/CheckoutModal';
+import { CheckoutPage, ConfirmationPage } from './components/CheckoutModal';
+import { loadRazorpayScript } from './utils/razorpay';
 import AdminDashboard from './components/AdminDashboard';
 import { LoginModal, MerchantLoginModal } from './components/LoginModal';
 import InquiryModal from './components/InquiryModal';
@@ -43,39 +46,33 @@ import {
 
 import {
   getActiveFirebaseConfig,
-  saveCustomFirebaseConfig,
   isFirebaseConfigured
 } from './utils/firebaseConfig';
 
 import { collection, onSnapshot } from 'firebase/firestore';
 
 export default function App() {
-  // Page Routing: 'home' | 'shop' | 'product' | 'checkout' | 'confirmation' | 'admin' | 'orders'
-  const [page, setPage] = useState('home');
+  const navigate = useNavigate();
+  const location = useLocation();
+
   const [activeCategory, setActiveCategory] = useState(null);
-  const [selectedProduct, setSelectedProduct] = useState(null);
   const [query, setQuery] = useState('');
 
   // Datasets
-  const [products, setProducts] = useState(() => {
-    const saved = localStorage.getItem('yd_products');
-    return saved ? JSON.parse(saved) : INITIAL_PRODUCTS;
-  });
+  const [products, setProducts] = useState(INITIAL_PRODUCTS);
+  const [categories, setCategories] = useState(INITIAL_CATEGORIES);
+  const [brands, setBrands] = useState(INITIAL_BRANDS);
 
-  const [categories, setCategories] = useState(() => {
-    const saved = localStorage.getItem('yd_categories');
-    return saved ? JSON.parse(saved) : INITIAL_CATEGORIES;
-  });
-
-  const [brands, setBrands] = useState(() => {
-    const saved = localStorage.getItem('yd_brands');
-    return saved ? JSON.parse(saved) : INITIAL_BRANDS;
-  });
-
-  const [orders, setOrders] = useState(() => {
-    const saved = localStorage.getItem('yd_orders');
-    return saved ? JSON.parse(saved) : INITIAL_ORDERS;
-  });
+  const brandMap = useMemo(() => {
+    const map = {};
+    if (brands && brands.length) {
+      brands.forEach(b => {
+        map[b.name] = b;
+      });
+    }
+    return map;
+  }, [brands]);
+  const [orders, setOrders] = useState(INITIAL_ORDERS);
 
   // Cart & Wishlist
   const [cart, setCart] = useState(() => {
@@ -92,9 +89,16 @@ export default function App() {
   const [user, setUser] = useState(null);
   const [isUserLoginOpen, setIsUserLoginOpen] = useState(false);
   const [isMerchantLockOpen, setIsMerchantLockOpen] = useState(false);
-  const [isAdminUnlocked, setIsAdminUnlocked] = useState(() => {
-    return sessionStorage.getItem('yd_admin_unlocked') === 'true';
-  });
+  const [adminUser, setAdminUser] = useState(null);
+  const isAdminUnlocked = Boolean(adminUser);
+
+  useEffect(() => {
+    let unsubscribe = () => {};
+    import('./utils/firebase').then(({ subscribeToAuthChanges }) => {
+      unsubscribe = subscribeToAuthChanges((u) => setAdminUser(u));
+    });
+    return () => unsubscribe();
+  }, []);
 
   // Admin Modals & State
   const [editingProduct, setEditingProduct] = useState(null);
@@ -109,14 +113,9 @@ export default function App() {
   const [confirmedOrder, setConfirmedOrder] = useState(null);
 
   // Firebase Config State
-  const [firebaseConfig, setFirebaseConfig] = useState(() => getActiveFirebaseConfig());
   const [isFirebaseLive, setIsFirebaseLive] = useState(false);
 
   // Persist local changes to localStorage
-  useEffect(() => { localStorage.setItem('yd_products', JSON.stringify(products)); }, [products]);
-  useEffect(() => { localStorage.setItem('yd_categories', JSON.stringify(categories)); }, [categories]);
-  useEffect(() => { localStorage.setItem('yd_brands', JSON.stringify(brands)); }, [brands]);
-  useEffect(() => { localStorage.setItem('yd_orders', JSON.stringify(orders)); }, [orders]);
   useEffect(() => { localStorage.setItem('yd_cart', JSON.stringify(cart)); }, [cart]);
   useEffect(() => { localStorage.setItem('yd_wishlist', JSON.stringify(wishlist)); }, [wishlist]);
 
@@ -164,33 +163,12 @@ export default function App() {
       unsubBrands();
       unsubOrders();
     };
-  }, [firebaseConfig]);
+  }, []);
 
-  // Browser Navigation History (pushState / popstate)
+  // Navigation effect for scroll-to-top
   useEffect(() => {
-    const handlePopState = (e) => {
-      if (e.state) {
-        if (e.state.page) setPage(e.state.page);
-        if (e.state.productId) {
-          const p = products.find(prod => prod.id === e.state.productId);
-          if (p) setSelectedProduct(p);
-        }
-      }
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, [products]);
-
-  const navigateTo = (targetPage, prod = null) => {
-    setPage(targetPage);
-    if (prod) {
-      setSelectedProduct(prod);
-      window.history.pushState({ page: targetPage, productId: prod.id }, '', `#${targetPage}/${prod.id}`);
-    } else {
-      window.history.pushState({ page: targetPage }, '', `#${targetPage}`);
-    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [location.pathname]);
 
   // Cart Handlers
   const addToCart = (product, size = 'M', qty = 1, color = null) => {
@@ -281,10 +259,7 @@ export default function App() {
     await saveProductToFirestore(updated);
   };
 
-  const handleSaveFirebaseConfig = (newCfg) => {
-    saveCustomFirebaseConfig(newCfg);
-    setFirebaseConfig(newCfg);
-  };
+
 
   const handleSeedFirebase = async () => {
     const { db } = getFirebaseInstance();
@@ -295,20 +270,96 @@ export default function App() {
   };
 
   // Order & Payment Flow
-  const handleProceedToPayment = (orderDraft) => {
-    setPaymentDraft(orderDraft);
+  const handleProceedToPayment = async (orderDraft) => {
+    if (orderDraft.paymentMethod === "Cash on Delivery") {
+      setPaymentDraft(orderDraft);
+      handlePaymentSuccess(`COD-${Date.now()}`, orderDraft);
+      return;
+    }
+
+    const res = await loadRazorpayScript();
+    if (!res) {
+      alert("Razorpay SDK failed to load. Are you online?");
+      return;
+    }
+
+    try {
+      const API_URL = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:5000' : '');
+      const orderResponse = await fetch(`${API_URL}/api/create-razorpay-order`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: orderDraft.total })
+      });
+      
+      const orderData = await orderResponse.json();
+
+      if (!orderResponse.ok) {
+        throw new Error(orderData.error || 'Failed to initialize order');
+      }
+
+      const options = {
+        key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+        amount: orderData.amount,
+        currency: orderData.currency,
+        name: "Yashal Dresses Atelier",
+        description: "Bespoke Garment Purchase",
+        image: "https://yashaldresses.com/logo.png",
+        order_id: orderData.id,
+        handler: async function (response) {
+          try {
+            // Verify Signature on Backend
+            const verifyRes = await fetch(`${API_URL}/api/verify-payment`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature
+              })
+            });
+            const verifyData = await verifyRes.json();
+            
+            if (verifyData.success) {
+              handlePaymentSuccess(response.razorpay_payment_id, orderDraft);
+            } else {
+              alert("Payment Verification Failed. Do not panic, if money was deducted it will be refunded. Error: " + verifyData.error);
+            }
+          } catch (err) {
+            alert("Network error during payment verification. Please contact support.");
+          }
+        },
+        prefill: {
+          name: orderDraft.customer.name,
+          email: orderDraft.customer.email,
+          contact: orderDraft.customer.phone
+        },
+        theme: {
+          color: "#D4AF37"
+        }
+      };
+
+      const paymentObject = new window.Razorpay(options);
+      paymentObject.on('payment.failed', function (response) {
+        alert(`Payment Failed: ${response.error.description}`);
+      });
+      paymentObject.open();
+
+    } catch (err) {
+      console.error(err);
+      alert("Could not securely connect to payment gateway. Please try again later or select COD.");
+    }
   };
 
-  const handlePaymentSuccess = async (txId) => {
+  const handlePaymentSuccess = async (txId, draft = paymentDraft) => {
     const newOrder = {
       id: `ORD-${Math.floor(10000 + Math.random() * 90000)}`,
       date: new Date().toISOString(),
-      customer: paymentDraft.customer,
-      items: paymentDraft.items,
-      subtotal: paymentDraft.subtotal,
-      shipping: paymentDraft.shipping,
-      total: paymentDraft.total,
-      paymentMethod: paymentDraft.paymentMethod,
+      customer: draft.customer,
+      items: draft.items,
+      subtotal: draft.subtotal,
+      shipping: draft.shipping,
+      total: draft.total,
+      paymentMethod: draft.paymentMethod,
       transactionId: txId,
       status: 'Confirmed',
     };
@@ -317,7 +368,7 @@ export default function App() {
     setCart([]);
     setPaymentDraft(null);
     setConfirmedOrder(newOrder);
-    setPage('confirmation');
+    navigate('/confirmation');
 
     // Save to Firestore
     await saveOrderToFirestore(newOrder);
@@ -326,40 +377,46 @@ export default function App() {
     await sendOrderConfirmationEmail(newOrder);
   };
 
-  // Resolve currently active product dynamically so edits in admin reflect immediately
-  const activeProduct = useMemo(() => {
-    if (!selectedProduct) return null;
-    return products.find((p) => p.id === selectedProduct.id) || selectedProduct;
-  }, [products, selectedProduct]);
+
 
   return (
-    <div className="yd-root min-h-screen flex flex-col w-full overflow-x-hidden">
-      <BrandStyles />
+    <StoreProvider 
+      products={products}
+      orders={orders}
+      categories={categories}
+      brands={brands}
+      cart={cart}
+      updateCartQty={updateCartQty}
+      removeCartItem={removeCartItem}
+      user={user}
+      openLogin={() => setIsUserLoginOpen(true)}
+      query={query}
+      setQuery={setQuery}
+      activeCategory={activeCategory}
+      setActiveCategory={setActiveCategory}
+      wishlist={wishlist}
+      toggleWishlist={toggleWishlist}
+      setIsCartOpen={setIsCartOpen}
+    >
+      <div className="yd-root min-h-screen flex flex-col w-full overflow-x-hidden">
+
       <CurtainIntro />
 
       {/* Header */}
       <Header
-        page={page}
-        setPage={(pg) => navigateTo(pg)}
         query={query}
         setQuery={setQuery}
-        cartCount={cart.reduce((sum, it) => sum + it.qty, 0)}
-        onCartClick={() => setIsCartOpen(true)}
-        user={user}
-        onLoginClick={() => setIsUserLoginOpen(true)}
-        onMenuClick={() => setIsCartOpen(true)}
-        isAdminMode={page === 'admin' && isAdminUnlocked}
+        isAdminMode={location.pathname === '/admin' && isAdminUnlocked}
         setIsAdminMode={(val) => {
           if (val) {
             if (isAdminUnlocked) {
-              navigateTo('admin');
+              navigate('/admin');
             } else {
               setIsMerchantLockOpen(true);
             }
           } else {
-            setIsAdminUnlocked(false);
-            sessionStorage.removeItem('yd_admin_unlocked');
-            navigateTo('home');
+            import('./utils/firebase').then(({ adminSignOut }) => adminSignOut());
+            navigate('/');
           }
         }}
         onInquiryClick={() => {
@@ -370,197 +427,164 @@ export default function App() {
 
       {/* Main Content Router */}
       <main className="flex-1 w-full overflow-x-hidden min-w-0">
-        {page === 'home' && (
-          <>
-            <Hero
-              setPage={(pg) => navigateTo(pg)}
-              setActiveCategory={(cat) => {
-                setActiveCategory(cat);
-                navigateTo('shop');
-              }}
-              products={products}
-            />
-            <FestiveBanner
-              setPage={(pg) => navigateTo(pg)}
-              setActiveCategory={(cat) => {
-                setActiveCategory(cat);
-                navigateTo('shop');
-              }}
-            />
-            <CategoryRail
-              categories={categories}
-              activeCategory={activeCategory}
-              setActiveCategory={(cat) => {
-                setActiveCategory(cat);
-                navigateTo('shop');
-              }}
-            />
+        <Routes>
+          <Route path="/" element={
+            <>
+              <Hero
+                setActiveCategory={(cat) => {
+                  setActiveCategory(cat);
+                  navigate('/shop');
+                }}
+                products={products}
+              />
+              <FestiveBanner
+                setActiveCategory={(cat) => {
+                  setActiveCategory(cat);
+                  navigate('/shop');
+                }}
+              />
+              <CategoryRail
+                categories={categories}
+                activeCategory={activeCategory}
+                setActiveCategory={(cat) => {
+                  setActiveCategory(cat);
+                  navigate('/shop');
+                }}
+              />
 
-            {/* Curated Bestsellers Grid */}
-            <section className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 overflow-x-hidden min-w-0">
-              <div className="flex justify-between items-end mb-6 sm:mb-8">
-                <div>
-                  <span className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest block mb-1">
-                    ATELIER SPOTLIGHT
-                  </span>
-                  <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold">
-                    Signature Ready-to-Wear
-                  </h2>
+              <section className="w-full max-w-7xl mx-auto px-3 sm:px-4 md:px-6 py-8 sm:py-12 overflow-x-hidden min-w-0">
+                <div className="flex justify-between items-end mb-6 sm:mb-8">
+                  <div>
+                    <span className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest block mb-1">
+                      ATELIER SPOTLIGHT
+                    </span>
+                    <h2 className="font-display text-xl sm:text-2xl md:text-3xl font-semibold">
+                      Signature Ready-to-Wear
+                    </h2>
+                  </div>
+                  <button
+                    onClick={() => navigate('/shop')}
+                    className="font-mono text-xs text-[var(--ink)] hover:text-[var(--mustard-deep)] font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    Explore All Designs →
+                  </button>
                 </div>
-                <button
-                  onClick={() => navigateTo('shop')}
-                  className="font-mono text-xs text-[var(--ink)] hover:text-[var(--mustard-deep)] font-semibold flex items-center gap-1 cursor-pointer"
-                >
-                  Explore All Designs →
-                </button>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 min-w-0 w-full">
-                {(products || []).slice(0, 8).map((p, idx) => (
-                  <ProductCard
-                    key={p.id}
-                    p={p}
-                    index={idx}
-                    brands={brands}
-                    wishlist={wishlist}
-                    toggleWish={toggleWishlist}
-                    onOpen={(prod) => navigateTo('product', prod)}
-                  />
-                ))}
-              </div>
-            </section>
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4 md:gap-6 min-w-0 w-full">
+                  {(products || []).slice(0, 8).map((p, idx) => (
+                    <ProductCard
+                      key={p.id}
+                      p={p}
+                      index={idx}
+                      brands={brandMap}
+                      wishlist={wishlist}
+                      toggleWish={toggleWishlist}
+                      onOpen={(prod) => navigate(`/product/${prod.id}`)}
+                    />
+                  ))}
+                </div>
+              </section>
 
-            <Lookbook
-              products={products}
-              onOpen={(prod) => navigateTo('product', prod)}
-              setPage={(pg) => navigateTo(pg)}
+              <Lookbook
+                products={products}
+                onOpen={(prod) => navigate(`/product/${prod.id}`)}
+              />
+            </>
+          } />
+
+          <Route path="/shop" element={
+            <ShopPage
+              onOpen={(prod) => navigate(`/product/${prod.id}`)}
             />
-          </>
-        )}
+          } />
 
-        {page === 'shop' && (
-          <ShopPage
-            query={query}
-            setQuery={setQuery}
-            activeCategory={activeCategory}
-            setActiveCategory={setActiveCategory}
-            categories={categories}
-            products={products}
-            brands={brands}
-            wishlist={wishlist}
-            toggleWish={toggleWishlist}
-            onOpen={(prod) => navigateTo('product', prod)}
-          />
-        )}
-
-        {page === 'product' && (
-          activeProduct ? (
-            <ProductPage
-              product={activeProduct}
+          <Route path="/product/:id" element={
+            <ProductPageWrapper 
               products={products}
-              brands={brands}
-              setPage={(pg) => navigateTo(pg)}
-              goBack={() => navigateTo('shop')}
+              brands={brandMap}
               addToCart={addToCart}
               wishlist={wishlist}
               toggleWish={toggleWishlist}
-              onOpen={(prod) => navigateTo('product', prod)}
               onOpenInquiry={(prod) => {
                 setInquiryProduct(prod);
                 setIsInquiryOpen(true);
               }}
             />
-          ) : (
-            <div className="max-w-md mx-auto my-20 p-8 text-center bg-white rounded-xl shadow-lg border border-[var(--line)]">
-              <h2 className="font-display text-2xl font-semibold mb-3">Garment Not Found</h2>
-              <p className="text-sm text-gray-600 mb-6">The selected piece is no longer on the rack or could not be loaded.</p>
-              <button
-                onClick={() => navigateTo('shop')}
-                className="yd-btn yd-btn-primary px-6 py-3 w-full font-bold cursor-pointer"
-                style={{ background: 'var(--ink)', color: 'var(--ivory)' }}
-              >
-                Browse All Garments
-              </button>
-            </div>
-          )
-        )}
+          } />
 
-        {page === 'checkout' && (
-          <CheckoutPage
-            cart={cart}
-            products={products}
-            setPage={(pg) => navigateTo(pg)}
-            onProceedToPayment={handleProceedToPayment}
-            user={user}
-          />
-        )}
-
-        {page === 'confirmation' && confirmedOrder && (
-          <ConfirmationPage
-            order={confirmedOrder}
-            setPage={(pg) => navigateTo(pg)}
-            onSendEmailConfirmation={sendOrderConfirmationEmail}
-          />
-        )}
-
-        {page === 'orders' && (
-          <OrdersPage
-            orders={orders}
-            products={products}
-            setPage={(pg) => navigateTo(pg)}
-          />
-        )}
-
-        {page === 'admin' && (
-          isAdminUnlocked ? (
-            <AdminDashboard
+          <Route path="/checkout" element={
+            <CheckoutPage
+              cart={cart}
               products={products}
-              setProducts={setProducts}
-              categories={categories}
-              setCategories={setCategories}
-              onSaveCategory={handleSaveCategory}
-              onDeleteCategory={handleDeleteCategory}
-              brands={brands}
-              setBrands={setBrands}
-              onSaveBrand={handleSaveBrand}
-              onDeleteBrand={handleDeleteBrand}
-              orders={orders}
-              onLogout={() => {
-                setIsAdminUnlocked(false);
-                sessionStorage.removeItem('yd_admin_unlocked');
-                navigateTo('home');
-              }}
-              onOpenAddProductModal={() => {
-                setEditingProduct(null);
-                setIsProductModalOpen(true);
-              }}
-              onSeedFirebase={handleSeedFirebase}
-              firebaseStatus={isFirebaseLive}
-              firebaseConfig={firebaseConfig}
-              onSaveFirebaseConfig={handleSaveFirebaseConfig}
-              editingProduct={editingProduct}
-              setEditingProduct={setEditingProduct}
-              isProductModalOpen={isProductModalOpen}
-              setIsProductModalOpen={setIsProductModalOpen}
-              onSaveProduct={handleSaveProduct}
-              onDeleteProduct={handleDeleteProduct}
-              onQuickToggleStock={handleQuickToggleStock}
+              onProceedToPayment={handleProceedToPayment}
+              user={user}
             />
-          ) : (
-            <div className="max-w-md mx-auto my-20 p-8 text-center bg-[var(--ivory)] rounded-xl shadow-2xl border-2 border-[var(--mustard)]">
-              <p className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest font-bold mb-2">RESTRICTED WORKROOM</p>
-              <h2 className="font-display text-2xl font-semibold mb-3">Merchant Passcode Required</h2>
-              <p className="text-sm text-gray-700 mb-6">Enter authorized atelier security password (Dresses@067) to manage live inventory and orders.</p>
-              <button
-                onClick={() => setIsMerchantLockOpen(true)}
-                className="yd-btn yd-btn-primary px-6 py-3 w-full font-bold shadow cursor-pointer"
-                style={{ background: 'var(--ink)', color: 'var(--ivory)' }}
-              >
-                Enter Passcode (Unlock)
-              </button>
-            </div>
-          )
-        )}
+          } />
+
+          <Route path="/confirmation" element={
+            confirmedOrder ? (
+              <ConfirmationPage
+                order={confirmedOrder}
+                onSendEmailConfirmation={sendOrderConfirmationEmail}
+              />
+            ) : null
+          } />
+
+          <Route path="/orders" element={
+            <OrdersPage
+              orders={orders}
+              products={products}
+            />
+          } />
+
+          <Route path="/admin" element={
+            isAdminUnlocked ? (
+              <AdminDashboard
+                products={products}
+                setProducts={setProducts}
+                categories={categories}
+                setCategories={setCategories}
+                onSaveCategory={handleSaveCategory}
+                onDeleteCategory={handleDeleteCategory}
+                brands={brands}
+                setBrands={setBrands}
+                onSaveBrand={handleSaveBrand}
+                onDeleteBrand={handleDeleteBrand}
+                orders={orders}
+                onLogout={() => {
+                  import('./utils/firebase').then(({ adminSignOut }) => adminSignOut());
+                  navigate('/');
+                }}
+                onOpenAddProductModal={() => {
+                  setEditingProduct(null);
+                  setIsProductModalOpen(true);
+                }}
+                onSeedFirebase={handleSeedFirebase}
+                firebaseStatus={isFirebaseLive}
+                editingProduct={editingProduct}
+                setEditingProduct={setEditingProduct}
+                isProductModalOpen={isProductModalOpen}
+                setIsProductModalOpen={setIsProductModalOpen}
+                onSaveProduct={handleSaveProduct}
+                onDeleteProduct={handleDeleteProduct}
+                onQuickToggleStock={handleQuickToggleStock}
+              />
+            ) : (
+              <div className="max-w-md mx-auto my-20 p-8 text-center bg-[var(--ivory)] rounded-xl shadow-2xl border-2 border-[var(--mustard)]">
+                <p className="font-mono text-xs text-[var(--mustard-deep)] uppercase tracking-widest font-bold mb-2">RESTRICTED WORKROOM</p>
+                <h2 className="font-display text-2xl font-semibold mb-3">Merchant Authentication Required</h2>
+                <p className="text-sm text-gray-700 mb-6">Login with an authorized atelier account to manage live inventory and orders.</p>
+                <button
+                  onClick={() => setIsMerchantLockOpen(true)}
+                  className="yd-btn yd-btn-primary px-6 py-3 w-full font-bold shadow cursor-pointer"
+                  style={{ background: 'var(--ink)', color: 'var(--ivory)' }}
+                >
+                  Admin Login
+                </button>
+              </div>
+            )
+          } />
+        </Routes>
       </main>
 
       {/* Floating Inquiry Button & Modal */}
@@ -579,10 +603,6 @@ export default function App() {
         products={products}
         updateQty={(id, delta, size, color) => updateCartQty(id, size, delta, color)}
         removeItem={(id, size, color) => removeCartItem(id, size, color)}
-        setPage={(pg) => {
-          setIsCartOpen(false);
-          navigateTo(pg);
-        }}
         user={user}
         openLogin={() => setIsUserLoginOpen(true)}
       />
@@ -602,25 +622,18 @@ export default function App() {
         open={isMerchantLockOpen}
         close={() => setIsMerchantLockOpen(false)}
         onUnlock={() => {
-          setIsAdminUnlocked(true);
-          sessionStorage.setItem('yd_admin_unlocked', 'true');
-          navigateTo('admin');
+          setIsMerchantLockOpen(false);
+          navigate('/admin');
         }}
       />
 
-      {/* Razorpay Gateway Simulation Modal */}
-      <RazorpayGatewayModal
-        orderDraft={paymentDraft}
-        onSuccess={handlePaymentSuccess}
-        onCancel={() => setPaymentDraft(null)}
-      />
+
 
       {/* Footer */}
       <Footer
-        setPage={(pg) => navigateTo(pg)}
         setActiveCategory={(cat) => {
           setActiveCategory(cat);
-          navigateTo('shop');
+          navigate('/shop');
         }}
         onOpenInquiry={() => {
           setInquiryProduct(null);
@@ -628,5 +641,42 @@ export default function App() {
         }}
       />
     </div>
+    </StoreProvider>
+  );
+}
+
+function ProductPageWrapper({ products, brands, addToCart, wishlist, toggleWish, onOpenInquiry }) {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const product = products.find(p => p.id === id);
+
+  if (!product) {
+    return (
+      <div className="max-w-md mx-auto my-20 p-8 text-center bg-white rounded-xl shadow-lg border border-[var(--line)]">
+        <h2 className="font-display text-2xl font-semibold mb-3">Garment Not Found</h2>
+        <p className="text-sm text-gray-600 mb-6">The selected piece is no longer on the rack or could not be loaded.</p>
+        <button
+          onClick={() => navigate('/shop')}
+          className="yd-btn yd-btn-primary px-6 py-3 w-full font-bold cursor-pointer"
+          style={{ background: 'var(--ink)', color: 'var(--ivory)' }}
+        >
+          Browse All Garments
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <ProductPage
+      product={product}
+      products={products}
+      brands={brands}
+      goBack={() => navigate(-1)}
+      addToCart={addToCart}
+      wishlist={wishlist}
+      toggleWish={toggleWish}
+      onOpen={(prod) => navigate(`/product/${prod.id}`)}
+      onOpenInquiry={onOpenInquiry}
+    />
   );
 }

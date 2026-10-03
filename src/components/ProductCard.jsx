@@ -4,7 +4,7 @@ import { Swatch } from "./BrandDecorations";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
-export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0, brands = [] }) {
+export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0, brands = {} }) {
   const off = p.mrp > p.price ? Math.round((1 - p.price / p.mrp) * 100) : 0;
   const tilt = index % 2 === 0 ? "-1.5deg" : "1.5deg";
 
@@ -16,7 +16,7 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
   const isOutOfStock = !p.inStock || totalStock === 0;
   const isLowStock = !isOutOfStock && totalStock <= 5;
 
-  const brandInfo = brands.find((b) => b.name === p.brand) || {
+  const brandInfo = brands[p.brand] || {
     name: p.brand || "Zodiac",
     badgeBg: "rgba(212, 175, 55, 0.15)",
     badgeText: "#8A6A12",
