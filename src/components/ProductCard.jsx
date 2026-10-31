@@ -1,10 +1,13 @@
-import React from "react";
-import { Star, Heart } from "lucide-react";
+import React, { useState } from "react";
+import { Star, Heart, Share2 } from "lucide-react";
 import { Swatch } from "./BrandDecorations";
+import ShareModal from "./ShareModal";
+import { handleShareProduct } from "../utils/share";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
 export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0, brands = {} }) {
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const off = p.mrp > p.price ? Math.round((1 - p.price / p.mrp) * 100) : 0;
   const tilt = index % 2 === 0 ? "-1.5deg" : "1.5deg";
 
@@ -49,14 +52,31 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
         )}
       </div>
 
-      {/* Wishlist Button */}
-      <button
-        onClick={(e) => { e.stopPropagation(); toggleWish(p.id); }}
-        className="absolute top-2.5 right-2.5 z-20 bg-white/85 rounded-full p-1.5 shadow hover:scale-110 transition-transform cursor-pointer"
-        aria-label="Wishlist"
-      >
-        <Heart size={14} fill={wishlist && wishlist.includes(p.id) ? "var(--oxblood)" : "none"} color="var(--oxblood)" />
-      </button>
+      {/* Top Action Buttons: Share & Wishlist */}
+      <div className="absolute top-2.5 right-2.5 z-20 flex items-center gap-1.5">
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            handleShareProduct(p, () => setIsShareOpen(true));
+          }}
+          className="bg-white/85 hover:bg-white text-[var(--ink)] rounded-full p-1.5 shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+          aria-label="Share"
+          title="Share Garment"
+        >
+          <Share2 size={13} />
+        </button>
+
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); toggleWish(p.id); }}
+          className="bg-white/85 hover:bg-white rounded-full p-1.5 shadow hover:scale-110 active:scale-95 transition-transform cursor-pointer"
+          aria-label="Wishlist"
+          title="Save to Wishlist"
+        >
+          <Heart size={13} fill={wishlist && wishlist.includes(p.id) ? "var(--oxblood)" : "none"} color="var(--oxblood)" />
+        </button>
+      </div>
 
       {/* Tag Badge: Bestseller / New / Sale / Out of Stock */}
       {isOutOfStock ? (
@@ -140,6 +160,13 @@ export default function ProductCard({ p, onOpen, wishlist, toggleWish, index = 0
           {off > 0 && <span className="text-[10px] sm:text-[11px] font-mono" style={{ color: "var(--oxblood)" }}>{off}% off</span>}
         </div>
       </div>
+
+      {/* Desktop Fallback Share Modal */}
+      <ShareModal
+        open={isShareOpen}
+        close={() => setIsShareOpen(false)}
+        product={p}
+      />
     </div>
   );
 }
