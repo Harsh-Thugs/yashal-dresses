@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { Star, Heart, ArrowLeft, Minus, Plus, Truck, RotateCcw, ShieldCheck, AlertCircle, Check } from "lucide-react";
+import { Star, Heart, ArrowLeft, Minus, Plus, Truck, RotateCcw, ShieldCheck, AlertCircle, Check, Share2 } from "lucide-react";
 import { Swatch } from "./BrandDecorations";
 import ProductCard from "./ProductCard";
+import ShareModal from "./ShareModal";
+import { handleShareProduct } from "../utils/share";
 
 const money = (n) => `₹${n.toLocaleString("en-IN")}`;
 
@@ -25,6 +27,17 @@ export default function ProductPage({
   const [mainImgIdx, setMainImgIdx] = useState(0);
   const [selectedColor, setSelectedColor] = useState(null);
   const [customActiveImg, setCustomActiveImg] = useState(null);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+
+  // Dynamic document title for shared links
+  useEffect(() => {
+    if (product?.name) {
+      document.title = `${product.name} | Yashal Dresses`;
+    }
+    return () => {
+      document.title = "Yashal Dresses — Luxury Men's Apparel & Workroom";
+    };
+  }, [product?.name]);
 
   // Reset product state when a different product is selected
   useEffect(() => {
@@ -428,6 +441,16 @@ export default function ProductPage({
               <Heart size={15} fill={wishlist && wishlist.includes(product.id) ? "var(--oxblood)" : "none"} color="var(--oxblood)" />
               <span>Save</span>
             </button>
+
+            <button
+              type="button"
+              onClick={() => handleShareProduct(product, () => setIsShareOpen(true))}
+              className="yd-btn yd-btn-outline px-5 py-3.5 flex items-center justify-center gap-2 cursor-pointer hover:border-[var(--mustard)] hover:text-black transition-all"
+              title="Share this garment"
+            >
+              <Share2 size={15} />
+              <span>Share</span>
+            </button>
           </div>
 
           {/* Direct Store Helpline / WhatsApp Inquiry */}
@@ -459,6 +482,13 @@ export default function ProductPage({
           </div>
         </div>
       </div>
+
+      {/* Desktop Fallback Share Modal */}
+      <ShareModal
+        open={isShareOpen}
+        close={() => setIsShareOpen(false)}
+        product={product}
+      />
 
       {/* Related Products Rail */}
       <section className="mt-12 sm:mt-16 relative w-full overflow-x-hidden min-w-0">

@@ -648,12 +648,36 @@ export default function App() {
 function ProductPageWrapper({ products, brands, addToCart, wishlist, toggleWish, onOpenInquiry }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const product = products.find(p => p.id === id);
+  const [isWaitingSync, setIsWaitingSync] = useState(true);
+
+  // Normalize id lookup for case-insensitivity or encoded characters
+  const decodedId = decodeURIComponent(id || '').trim();
+  const product = products.find(p => p.id === id || String(p.id).toLowerCase() === decodedId.toLowerCase());
+
+  // Allow Firestore a brief window to sync custom products on direct link access
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsWaitingSync(false);
+    }, 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!product && isWaitingSync) {
+    return (
+      <div className="max-w-md mx-auto my-20 p-8 text-center bg-white rounded-xl shadow-lg border border-[var(--line)]">
+        <div className="w-12 h-12 mx-auto mb-4 rounded-full bg-[var(--mustard)]/20 flex items-center justify-center text-xl animate-bounce">
+          🧵
+        </div>
+        <h2 className="font-display text-xl font-semibold mb-2 text-[var(--ink)]">Retrieving Garment...</h2>
+        <p className="text-xs font-mono text-gray-500">Checking the atelier collection rack</p>
+      </div>
+    );
+  }
 
   if (!product) {
     return (
       <div className="max-w-md mx-auto my-20 p-8 text-center bg-white rounded-xl shadow-lg border border-[var(--line)]">
-        <h2 className="font-display text-2xl font-semibold mb-3">Garment Not Found</h2>
+        <h2 className="font-display text-2xl font-semibold mb-3 text-[var(--ink)]">Garment Not Found</h2>
         <p className="text-sm text-gray-600 mb-6">The selected piece is no longer on the rack or could not be loaded.</p>
         <button
           onClick={() => navigate('/shop')}
@@ -671,7 +695,7 @@ function ProductPageWrapper({ products, brands, addToCart, wishlist, toggleWish,
       product={product}
       products={products}
       brands={brands}
-      goBack={() => navigate(-1)}
+      goBack={() => (window.history.length > 1 ? navigate(-1) : navigate('/shop'))}
       addToCart={addToCart}
       wishlist={wishlist}
       toggleWish={toggleWish}
